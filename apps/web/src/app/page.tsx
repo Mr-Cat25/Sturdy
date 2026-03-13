@@ -4,55 +4,38 @@ import ExampleScriptSection from "@/components/landing/ExampleScriptSection";
 
 function TopNav() {
   return (
-    <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 sm:px-8 lg:px-12">
-        <a
-          href="#top"
-          className="text-lg font-semibold tracking-tight text-[#1E2430]"
-        >
-          Sturdy
-        </a>
+      <header className="sticky top-0 z-40 border-b border-black/5 bg-white/85 backdrop-blur">
+            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-8 lg:px-12">
+                    <div className="text-lg font-semibold text-neutral-950">Sturdy</div>
 
-        <nav className="hidden items-center gap-8 md:flex">
-          <a
-            href="#how-it-works"
-            className="text-sm font-medium text-[#4B5563] transition-colors hover:text-[#1E2430]"
-          >
-            How It Works
-          </a>
-          <a
-            href="#pricing"
-            className="text-sm font-medium text-[#4B5563] transition-colors hover:text-[#1E2430]"
-          >
-            Pricing
-          </a>
-          <a
-            href="#faq"
-            className="text-sm font-medium text-[#4B5563] transition-colors hover:text-[#1E2430]"
-          >
-            FAQ
-          </a>
-        </nav>
+                            <nav className="hidden items-center gap-8 text-sm text-neutral-600 md:flex">
+                                      <a href="#how-it-works" className="transition hover:text-neutral-950">
+                                                  How it works
+                                                            </a>
+                                                                      <a href="#example" className="transition hover:text-neutral-950">
+                                                                                  Example
+                                                                                            </a>
+                                                                                                    </nav>
 
-        <a
-          href="#start"
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-[#5B8DEF] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#4a7de0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5B8DEF] focus-visible:ring-offset-2"
-        >
-          Start Free
-        </a>
-      </div>
-    </header>
-  );
-}
+                                                                                                            <button className="rounded-2xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800">
+                                                                                                                      Get script
+                                                                                                                              </button>
+                                                                                                                                    </div>
+                                                                                                                                        </header>
+                                                                                                                                          );
+                                                                                                                                          }
 
-export default function Home() {
-  return (
-    <main id="top" className="min-h-screen bg-[#F7F9FC] text-[#1E2430]">
-      <TopNav />
-      <HeroSection />
-      <HowItWorksSection />
-      <ExampleScriptSection />
-    </main>
-  );
-}
-
+                                                                                                                                          export default function Home() {
+                                                                                                                                            return (
+                                                                                                                                                <main className="min-h-screen bg-[#FCFBF8] text-neutral-900">
+                                                                                                                                                      <TopNav />
+                                                                                                                                                            <HeroSection />
+                                                                                                                                                                  <div id="how-it-works">
+                                                                                                                                                                          <HowItWorksSection />
+                                                                                                                                                                                </div>
+                                                                                                                                                                                      <div id="example">
+                                                                                                                                                                                              <ExampleScriptSection />
+                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                        </main>
+                                                                                                                                                                                                          );
+                                                                                                                                                                                                          }

@@ -4,135 +4,110 @@ import { motion } from "framer-motion";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, delay: i * 0.15, ease: "easeOut" },
-  }),
-};
+    visible: (i: number) => ({
+        opacity: 1,
+            y: 0,
+                transition: {
+                      duration: 0.45,
+                            delay: i * 0.12,
+                          ease: "easeOut" as const,
+                                      },
+                                        }),
+                                        };
 
-function StepCard({
-  index,
-  title,
-  description,
-  children,
-}: {
-  index: number;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <motion.div
-      custom={index}
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.3 }}
-      className="flex flex-col rounded-2xl bg-white p-6 shadow-md ring-1 ring-[#EEF2F7]"
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#5B8DEF]">
-        Step {index + 1}
-      </p>
-      <h3 className="mt-2 text-lg font-semibold text-[#1E2430]">{title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-[#4B5563]">
-        {description}
-      </p>
-      <div className="mt-5 flex-1">{children}</div>
-    </motion.div>
-  );
-}
+                                        function StepCard({
+                                          index,
+                                            title,
+                                              description,
+                                                children,
+                                                }: {
+                                                  index: number;
+                                                    title: string;
+                                                      description: string;
+                                                        children: React.ReactNode;
+                                                        }) {
+                                                          return (
+                                                              <motion.div
+                                                                    custom={index}
+                                                                          initial="hidden"
+                                                                                whileInView="visible"
+                                                                                      viewport={{ once: true, amount: 0.3 }}
+                                                                                            variants={fadeUp}
+                                                                                                  className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm"
+                                                                                                      >
+                                                                                                            <p className="text-sm font-medium text-black/50">Step {index + 1}</p>
+                                                                                                                  <h3 className="mt-2 text-xl font-semibold text-neutral-900">{title}</h3>
+                                                                                                                        <p className="mt-3 text-sm leading-6 text-neutral-600">{description}</p>
+                                                                                                                              <div className="mt-5">{children}</div>
+                                                                                                                                  </motion.div>
+                                                                                                                                    );
+                                                                                                                                    }
 
-export default function HowItWorksSection() {
-  return (
-    <section
-      id="how-it-works"
-      className="bg-[#EEF2F7] px-6 py-24 sm:px-8 lg:px-12"
-    >
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="text-center"
-        >
-          <h2 className="text-3xl font-bold tracking-tight text-[#1E2430] sm:text-4xl">
-            Support in three simple steps
-          </h2>
-          <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[#4B5563] sm:text-lg">
-            Sturdy helps you find calm words during difficult parenting moments.
-          </p>
-        </motion.div>
+                                                                                                                                    export default function HowItWorksSection() {
+                                                                                                                                      return (
+                                                                                                                                          <section className="px-6 py-20 sm:px-8 lg:px-12">
+                                                                                                                                                <div className="mx-auto max-w-6xl">
+                                                                                                                                                        <div className="max-w-2xl">
+                                                                                                                                                                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
+                                                                                                                                                                              Type the moment. Get the script.
+                                                                                                                                                                                        </h2>
+                                                                                                                                                                                                  <p className="mt-4 text-lg leading-8 text-neutral-700">
+                                                                                                                                                                                                              Sturdy is built for high-stress parenting moments. It asks very
+                                                                                                                                                                                                                          little, moves fast, and gives you words you can actually use.
+                                                                                                                                                                                                                                    </p>
+                                                                                                                                                                                                                                            </div>
 
-        {/* Cards */}
-        <div className="mt-16 grid gap-8 md:grid-cols-3">
-          {/* Step 1 */}
-          <StepCard
-            index={0}
-            title="Describe the moment"
-            description="Tell Sturdy what's happening."
-          >
-            <div className="rounded-xl bg-[#F7F9FC] px-4 py-3">
-              <p className="text-sm italic leading-relaxed text-[#4B5563]">
-                &ldquo;My child is screaming because we have to leave the
-                park.&rdquo;
-              </p>
-            </div>
-          </StepCard>
+                                                                                                                                                                                                                                                    <div className="mt-10 grid gap-6 lg:grid-cols-3">
+                                                                                                                                                                                                                                                              <StepCard
+                                                                                                                                                                                                                                                                          index={0}
+                                                                                                                                                                                                                                                                                      title="Describe what’s happening"
+                                                                                                                                                                                                                                                                                                  description="Parents use a simple chat-style input instead of searching, scrolling, or reading long advice."
+                                                                                                                                                                                                                                                                                                            >
+                                                                                                                                                                                                                                                                                                                        <div className="rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-800">
+                                                                                                                                                                                                                                                                                                                                      “My child is screaming because we have to leave the park.”
+                                                                                                                                                                                                                                                                                                                                                  </div>
+                                                                                                                                                                                                                                                                                                                                                            </StepCard>
 
-          {/* Step 2 */}
-          <StepCard
-            index={1}
-            title="Get a calm script"
-            description="Sturdy generates simple words you can say immediately."
-          >
-            <div className="space-y-3">
-              <div className="rounded-xl bg-[#F7F9FC] px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#5B8DEF]">
-                  Regulate
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-[#1E2430]">
-                  &ldquo;I&rsquo;m here. I won&rsquo;t let you hit.&rdquo;
-                </p>
-              </div>
-              <div className="rounded-xl bg-[#F7F9FC] px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#6FCF97]">
-                  Connect
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-[#1E2430]">
-                  &ldquo;You really wanted to stay.&rdquo;
-                </p>
-              </div>
-              <div className="rounded-xl bg-[#F7F9FC] px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#D9A441]">
-                  Guide
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-[#1E2430]">
-                  &ldquo;We are leaving now.&rdquo;
-                </p>
-              </div>
-            </div>
-          </StepCard>
+                                                                                                                                                                                                                                                                                                                                                                      <StepCard
+                                                                                                                                                                                                                                                                                                                                                                                  index={1}
+                                                                                                                                                                                                                                                                                                                                                                                              title="Sturdy reflects the real struggle"
+                                                                                                                                                                                                                                                                                                                                                                                                          description="The response is grounded in the exact moment and shaped into three simple parts: Regulate, Connect, Guide."
+                                                                                                                                                                                                                                                                                                                                                                                                                    >
+                                                                                                                                                                                                                                                                                                                                                                                                                                <div className="space-y-3">
+                                                                                                                                                                                                                                                                                                                                                                                                                                              <div className="rounded-2xl bg-[#F5F8FF] p-3 text-sm text-neutral-800">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                              <span className="mb-1 block font-semibold text-[#3157C7]">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Regulate
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                You’re really upset about leaving.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div className="rounded-2xl bg-[#F4FBF6] p-3 text-sm text-neutral-800">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span className="mb-1 block font-semibold text-[#2F8A57]">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              Connect
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              You wanted to stay longer, and that feels hard. I’m not going to
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              let you hit.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <div className="rounded-2xl bg-[#FFF8EE] p-3 text-sm text-neutral-800">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <span className="mb-1 block font-semibold text-[#A56A00]">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Guide
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            We’re leaving now. You can hold my hand or I can help you get to
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            the car.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </StepCard>
 
-          {/* Step 3 */}
-          <StepCard
-            index={2}
-            title="Find what works for your child"
-            description="Save scripts and discover what helps your child over time."
-          >
-            <div className="rounded-xl bg-[#F7F9FC] px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#6FCF97]">
-                Insight
-              </p>
-              <p className="mt-1 text-sm leading-relaxed text-[#1E2430]">
-                Transitions are a common trigger.
-              </p>
-            </div>
-          </StepCard>
-        </div>
-      </div>
-    </section>
-  );
-}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <StepCard
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      index={2}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  title="Use it right away"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              description="The goal is not endless chat. The goal is a calm, firm, practical response you can say in the moment."
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="rounded-2xl bg-neutral-900 p-4 text-sm leading-6 text-white">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  No judgment. No jargon. Just grounded words for what to say next.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </StepCard>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </section>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            );
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
