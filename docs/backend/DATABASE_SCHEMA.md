@@ -112,58 +112,58 @@ Notes:
 
 ---
 
-## `child_profiles`
+# 2. child_profiles
 
-Represents a specific child the parent is seeking support for.
+## Purpose
 
-This is one of the most important tables in Sturdy because prompt quality depends heavily on child context.
+Stores child-specific context used for personalization.
 
-Purpose:
+## Table
 
-- exact age-based response adaptation
-- neurotype-aware adaptation
-- optional known preferences and supports
-
-Suggested fields:
-
-- `id` uuid primary key
-- `user_id` uuid not null references `auth.users(id)`
-- `name` text nullable
-- `age_years` integer not null
-- `neurotype` text[] not null default `{}`
-- `preferences` jsonb not null default `{}`
-- `notes` text nullable
-- `created_at` timestamptz
-- `updated_at` timestamptz
-
-### Exact Age Requirement
-
-The system should support individual ages from:
-
-**2 to 17**
-
-Recommended constraint:
-
-- `age_years >= 2`
-- `age_years <= 17`
-
-Why exact age matters:
-
-- a 2-year-old should not get the same script style as a 4-year-old
-- a 7-year-old should not get toddler phrasing
-- a 15-year-old should not get preschool tone
-
-Broad age bands may still be derived internally if useful, but the database should store the child’s **exact age**.
-
-### Example `preferences` JSON
-
-```json
-{
-  "known_triggers": ["sudden transitions", "screen time ending"],
-  "calming_supports": ["deep pressure hug", "quiet car ride"],
-  "communication_notes": ["responds better to short direct language"]
-}
+```sql
+create table public.child_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text,
+  child_age integer not null check (child_age between 2 and 17),
+  neurotype text[] not null default '{}',
+  preferences jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 ```
+
+Field Notes
+
+name  
+Optional. Some parents may not want to store a real name.
+
+child_age  
+Required exact age in years.  
+This must be stored as a single age value, not a broad age band.  
+Sturdy uses this value to adapt scripts developmentally and precisely.
+
+Examples:
+- 2
+- 4
+- 7
+- 13
+- 17
+
+neurotype  
+Examples:
+- ADHD
+- Autism
+- Anxiety
+- Sensory
+
+preferences  
+Flexible JSON for future additions such as:
+- preferred calming strategies
+- routine context
+- school-related notes
+- sensory environment preferences
+-
 
 ---
 
