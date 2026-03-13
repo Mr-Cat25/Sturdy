@@ -138,6 +138,11 @@ If the conversation does not exist, the backend may create it.
 childProfileId
 Required string UUID.
 Must belong to the authenticated user.
+
+Note:
+The backend loads the child profile for this `childProfileId` and uses the child’s exact single age (`child_age`) as part of prompt assembly.
+Exact-age adaptation is required; do not use broad age bands.
+
 mode
 Required enum.
 Allowed values:
@@ -557,7 +562,7 @@ Json
 Copy code
 {
   "name": "Alex",
-  "ageBand": "5-7",
+  "childAge": 6,
   "neurotype": ["ADHD", "Sensory"],
   "preferences": {
     "preferred_transition_warning_minutes": 5
@@ -570,7 +575,7 @@ Copy code
   "id": "uuid",
   "user_id": "uuid",
   "name": "Alex",
-  "age_band": "5-7",
+  "child_age": 6,
   "neurotype": ["ADHD", "Sensory"],
   "preferences": {
     "preferred_transition_warning_minutes": 5
@@ -595,7 +600,7 @@ Copy code
     {
       "id": "uuid",
       "name": "Alex",
-      "age_band": "5-7",
+      "child_age": 6,
       "neurotype": ["ADHD"],
       "preferences": {},
       "created_at": "2026-03-11T10:00:00Z",
@@ -618,7 +623,7 @@ Copy code
 {
   "childProfileId": "uuid",
   "name": "Alex",
-  "ageBand": "5-7",
+  "childAge": 6,
   "neurotype": ["ADHD", "Sensory"],
   "preferences": {
     "preferred_transition_warning_minutes": 10
@@ -632,7 +637,7 @@ Copy code
   "child_profile": {
     "id": "uuid",
     "name": "Alex",
-    "age_band": "5-7",
+    "child_age": 6,
     "neurotype": ["ADHD", "Sensory"],
     "preferences": {
       "preferred_transition_warning_minutes": 10
