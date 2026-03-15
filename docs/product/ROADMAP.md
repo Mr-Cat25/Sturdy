@@ -1,5 +1,3 @@
-ROADMAP.md
-
 # Sturdy Roadmap
 
 ## Product Direction
