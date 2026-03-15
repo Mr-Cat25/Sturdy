@@ -3,17 +3,32 @@ import { router } from 'expo-router';
 
 import { Button } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
+import { useAuth } from '../src/context/AuthContext';
 import { sturdyTheme } from '../src/theme';
 
 const { colors, spacing, radii, shadows, typography, components } = sturdyTheme;
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
+  const { session } = useAuth();
   const isWide = width >= 700;
 
   const handleStartPress = () => {
     console.log('START pressed');
     router.navigate('/emotional-framing');
+  };
+
+  const handleSavedScriptsPress = () => {
+    router.push('/saved');
+  };
+
+  const handleAccountPress = () => {
+    if (session) {
+      router.push('/account');
+      return;
+    }
+
+    router.push('/create-account');
   };
 
   return (
@@ -51,6 +66,16 @@ export default function WelcomeScreen() {
 
             <View style={styles.buttonBlock}>
               <Button label="Start Free" onPress={handleStartPress} style={styles.ctaButton} />
+              <Button
+                label={session ? 'Account' : 'Sign In'}
+                onPress={handleAccountPress}
+                style={styles.ctaButton}
+              />
+              <Button
+                label="Saved Scripts"
+                onPress={handleSavedScriptsPress}
+                style={styles.ctaButton}
+              />
               <Text style={styles.ctaCaption}>Get help in under a minute.</Text>
             </View>
           </View>

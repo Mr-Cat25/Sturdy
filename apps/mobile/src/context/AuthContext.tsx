@@ -9,6 +9,7 @@ type AuthContextValue = {
   isLoading: boolean;
   signUpWithEmail: (email: string, password: string) => Promise<{ session: Session | null }>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -87,6 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
         });
+
+        if (error) {
+          throw new Error(normalizeAuthError(error.message));
+        }
+      },
+      signOut: async () => {
+        const { error } = await supabase.auth.signOut();
 
         if (error) {
           throw new Error(normalizeAuthError(error.message));
