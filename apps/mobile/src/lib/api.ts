@@ -4,24 +4,35 @@ const PARENTING_SCRIPT_URL =
   'https://shiny-xylophone-69665w5wgr6x3r55p-54321.app.github.dev/functions/v1/chat-parenting-assistant';
 
 const PARENTING_SCRIPT_AUTHORIZATION = 'Bearer dev-local';
+const PARENTING_SCRIPT_HEADERS = {
+  'Content-Type': 'application/json',
+  Authorization: PARENTING_SCRIPT_AUTHORIZATION,
+} as const;
 
 export async function getParentingScript(
   input: ParentingScriptRequest,
 ): Promise<ParentingScriptResponse> {
   let response: Response;
 
+  console.log('[STURDY_DEBUG] Request URL', PARENTING_SCRIPT_URL);
+  console.log('[STURDY_DEBUG] Payload', input);
+  console.log('[STURDY_DEBUG] Fetch start');
+
   try {
     response = await fetch(PARENTING_SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        Authorization: PARENTING_SCRIPT_AUTHORIZATION,
-        'Content-Type': 'application/json',
-      },
+      headers: PARENTING_SCRIPT_HEADERS,
       body: JSON.stringify(input),
     });
-  } catch {
+  } catch (error) {
+    console.log('[STURDY_DEBUG] Fetch failed', {
+      error:
+        error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
+    });
     throw new Error('network-error');
   }
+
+  console.log('[STURDY_DEBUG] Response status', response.status);
 
   let data: unknown = null;
 
@@ -29,6 +40,12 @@ export async function getParentingScript(
     data = await response.json();
   } catch {
     data = null;
+  }
+
+  if (data !== null) {
+    console.log('[STURDY_DEBUG] Response body', data);
+  } else {
+    console.log('[STURDY_DEBUG] Response body', 'unavailable');
   }
 
   if (!response.ok) {

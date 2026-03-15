@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Button } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
+import { useAuth } from '../src/context/AuthContext';
+import { useChildProfile } from '../src/context/ChildProfileContext';
+import { saveScript } from '../src/lib/saveScript';
 import type { ParentingScriptResponse } from '../src/types/parentingScript';
 
 type ResultParams = {
@@ -22,7 +25,12 @@ export default function ResultScreen() {
   const navigation = useRouter();
   const params = useLocalSearchParams<ResultParams>();
   const { width } = useWindowDimensions();
+  const { session, isLoading } = useAuth();
+  const { draft } = useChildProfile();
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveErrorMessage, setSaveErrorMessage] = useState('');
   const isWide = width >= 700;
 
   const script: ParentingScriptResponse = {
@@ -33,20 +41,65 @@ export default function ResultScreen() {
     guide: getValue(params.guide) || 'We could not load the guidance step for this script.',
   };
 
+  useEffect(() => {
+    setIsSaved(false);
+    setIsSaving(false);
+    setSaveErrorMessage('');
+  }, [script.connect, script.guide, script.regulate, script.situation_summary]);
+
+  const handleSaveScript = async () => {
+    if (isLoading || isSaving) {
+      return;
+    }
+
+    if (!session) {
+      setSaveErrorMessage('');
+      setIsSaveModalVisible(true);
+      return;
+    }
+
+    setIsSaveModalVisible(false);
+    setSaveErrorMessage('');
+    setIsSaving(true);
+
+    try {
+      await saveScript({
+        situation_summary: script.situation_summary,
+        regulate: script.regulate,
+        connect: script.connect,
+        guide: script.guide,
+        childAge: draft.childAge,
+      });
+      setIsSaved(true);
+    } catch {
+      setSaveErrorMessage('We could not save this script right now. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Screen
       footer={
         <View style={styles.footerActions}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setIsSaveModalVisible(true)}
+            onPress={handleSaveScript}
+            disabled={isLoading || isSaving}
             style={({ pressed }) => [
               styles.saveButton,
+              isSaved ? styles.saveButtonSaved : null,
+              isLoading || isSaving ? styles.saveButtonDisabled : null,
               pressed ? styles.saveButtonPressed : null,
             ]}
           >
-            <Text style={styles.saveButtonText}>Save Script</Text>
+            <Text style={styles.saveButtonText}>
+              {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save Script'}
+            </Text>
           </Pressable>
+
+          {isSaved ? <Text style={styles.saveHelperText}>Script saved.</Text> : null}
+          {saveErrorMessage ? <Text style={styles.saveErrorText}>{saveErrorMessage}</Text> : null}
 
           <Button
             label="Try Another"
@@ -192,11 +245,30 @@ const styles = StyleSheet.create({
   saveButtonPressed: {
     backgroundColor: colors.chipBackground,
   },
+  saveButtonSaved: {
+    backgroundColor: colors.successBackground,
+    borderColor: colors.primary,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
   saveButtonText: {
     color: colors.text,
     fontSize: 17,
     fontWeight: '700',
     lineHeight: 24,
+    textAlign: 'center',
+  },
+  saveHelperText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  saveErrorText: {
+    color: '#B45309',
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
   },
   sectionCard: {

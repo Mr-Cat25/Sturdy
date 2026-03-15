@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Button } from '../src/components/ui/Button';
@@ -36,19 +45,29 @@ export default function NowScreen() {
   const handleGetScript = async () => {
     const message = situation.trim();
 
+    console.log('[STURDY_DEBUG] Get Script pressed', {
+      hasMessage: Boolean(message),
+      childAge,
+      neurotypeCount: neurotypes.length,
+    });
+
     if (!message || childAge === null) {
       return;
     }
+
+    const payload = {
+      message,
+      childAge,
+      neurotype: neurotypes,
+    };
+
+    console.log('[STURDY_DEBUG] Sending payload', payload);
 
     setErrorMessage('');
     setIsLoading(true);
 
     try {
-      const script = await getParentingScript({
-        message,
-        childAge,
-        neurotype: neurotypes,
-      });
+      const script = await getParentingScript(payload);
 
       navigation.push({
         pathname: '/result',
@@ -59,7 +78,11 @@ export default function NowScreen() {
           guide: script.guide,
         },
       });
-    } catch {
+    } catch (error) {
+      console.log('[STURDY_DEBUG] Get Script failed', {
+        error:
+          error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
+      });
       setErrorMessage('We could not get a script right now. Please try again.');
     } finally {
       setIsLoading(false);
@@ -67,61 +90,83 @@ export default function NowScreen() {
   };
 
   return (
-    <Screen
-      footer={
-        <Button
-          label={isLoading ? 'Getting Script...' : 'Get Script'}
-          onPress={handleGetScript}
-          disabled={!situation.trim() || isLoading || childAge === null}
-        />
-      }
-    >
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+    <Screen scrollable={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? spacing.md : 0}
+        style={styles.keyboardContent}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          contentInsetAdjustmentBehavior="always"
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </Pressable>
 
-      <View style={[styles.header, isWide ? styles.headerWide : null]}>
-        <Text style={styles.title}>What&apos;s happening right now?</Text>
-        <Text style={styles.subtitle}>
-          Describe the moment in one or two sentences. Keep it plain and real.
-        </Text>
-      </View>
-
-      <View style={[styles.contentLayout, isWide ? styles.contentLayoutWide : null]}>
-        {(childName || childAge !== null || neurotypes.length) ? (
-          <View style={[styles.summaryCard, isWide ? styles.summaryCardWide : null]}>
-            <Text style={styles.summaryTitle}>Child summary</Text>
-            {childName ? <Text style={styles.summaryText}>Name: {childName}</Text> : null}
-            {childAge !== null ? <Text style={styles.summaryText}>Age: {childAge}</Text> : null}
-            {neurotypes.length ? (
-              <Text style={styles.summaryText}>Neurotype: {neurotypes.join(', ')}</Text>
-            ) : null}
+          <View style={[styles.header, isWide ? styles.headerWide : null]}>
+            <Text style={styles.title}>What&apos;s happening right now?</Text>
+            <Text style={styles.subtitle}>
+              Describe the moment in one or two sentences. Keep it plain and real.
+            </Text>
           </View>
-        ) : null}
 
-        <View style={[styles.formCard, isWide ? styles.formCardWide : null]}>
-          <Input
-            label="Describe the moment"
-            multiline
-            onChangeText={(value) => {
-              setSituation(value);
+          <View style={[styles.contentLayout, isWide ? styles.contentLayoutWide : null]}>
+            {(childName || childAge !== null || neurotypes.length) ? (
+              <View style={[styles.summaryCard, isWide ? styles.summaryCardWide : null]}>
+                <Text style={styles.summaryTitle}>Child summary</Text>
+                {childName ? <Text style={styles.summaryText}>Name: {childName}</Text> : null}
+                {childAge !== null ? <Text style={styles.summaryText}>Age: {childAge}</Text> : null}
+                {neurotypes.length ? (
+                  <Text style={styles.summaryText}>Neurotype: {neurotypes.join(', ')}</Text>
+                ) : null}
+              </View>
+            ) : null}
 
-              if (errorMessage) {
-                setErrorMessage('');
-              }
-            }}
-            placeholder="My child is screaming because we have to leave the park."
-            value={situation}
-            hint="You&apos;re not writing a report. A simple snapshot is enough."
-          />
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-        </View>
-      </View>
+            <View style={[styles.formCard, isWide ? styles.formCardWide : null]}>
+              <Input
+                label="Describe the moment"
+                multiline
+                onChangeText={(value) => {
+                  setSituation(value);
+
+                  if (errorMessage) {
+                    setErrorMessage('');
+                  }
+                }}
+                placeholder="My child is screaming because we have to leave the park."
+                value={situation}
+                hint="You&apos;re not writing a report. A simple snapshot is enough."
+              />
+              {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+            </View>
+          </View>
+
+          <View style={styles.buttonWrap}>
+            <Button
+              label={isLoading ? 'Getting Script...' : 'Get Script'}
+              onPress={handleGetScript}
+              disabled={!situation.trim() || isLoading || childAge === null}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContent: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
   backButton: {
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
@@ -194,6 +239,9 @@ const styles = StyleSheet.create({
     flex: 1.4,
     maxWidth: 760,
     minWidth: 0,
+  },
+  buttonWrap: {
+    paddingTop: spacing.sm,
   },
   errorText: {
     color: '#B45309',
