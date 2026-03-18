@@ -1,69 +1,42 @@
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useRouter } from 'expo-router';
 
 import { Button } from '../src/components/ui/Button';
-import { Chip } from '../src/components/ui/Chip';
 import { Input } from '../src/components/ui/Input';
 import { Screen } from '../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
 import { useChildProfile } from '../src/context/ChildProfileContext';
 
-const neurotypeOptions = ['None', 'ADHD', 'Autism', 'Anxiety', 'Sensory'];
+const ageOptions = Array.from({ length: 16 }, (_, index) => index + 2);
 
 export default function ChildSetupScreen() {
   const navigation = useRouter();
   const { width } = useWindowDimensions();
   const { draft, setDraft } = useChildProfile();
   const [childName, setChildName] = useState(draft.name ?? '');
-  const [age, setAge] = useState(draft.childAge === null ? '' : String(draft.childAge));
-  const [selectedNeurotypes, setSelectedNeurotypes] = useState<string[]>(draft.neurotype);
+  const [selectedAge, setSelectedAge] = useState<number | null>(draft.childAge);
   const isWide = width >= 700;
 
-  const ageNumber = Number(age);
-  const isAgeValid = Number.isInteger(ageNumber) && ageNumber >= 2 && ageNumber <= 17;
-
-  const ageHint = useMemo(() => {
-    if (!age.length) {
-      return 'Required. Enter an exact age from 2 to 17.';
-    }
-
-    if (!isAgeValid) {
-      return 'Please enter a whole number between 2 and 17.';
-    }
-
-    return 'Great. We use exact age to keep the script developmentally on target.';
-  }, [age.length, isAgeValid]);
-
-  const isNoneSelected = selectedNeurotypes.length === 0;
-
-  const toggleNeurotype = (value: string) => {
-    if (value === 'None') {
-      setSelectedNeurotypes([]);
-      return;
-    }
-
-    setSelectedNeurotypes((current) =>
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
-    );
-  };
+  const isChildNameValid = childName.trim().length > 0;
+  const isAgeValid = selectedAge !== null;
+  const canContinue = isChildNameValid && isAgeValid;
 
   const handleContinue = () => {
-    if (!isAgeValid) {
+    if (!canContinue || selectedAge === null) {
       return;
     }
 
     setDraft({
-      name: childName.trim() || undefined,
-      childAge: ageNumber,
-      neurotype: selectedNeurotypes,
+      name: childName.trim(),
+      childAge: selectedAge,
     });
 
     navigation.navigate('/now');
   };
 
   return (
-    <Screen footer={<Button label="Continue" onPress={handleContinue} disabled={!isAgeValid} />}>
+    <Screen footer={<Button label="Continue" onPress={handleContinue} disabled={!canContinue} />}>
       <Pressable onPress={() => router.back()} style={styles.backButton}>
         <Text style={styles.backButtonText}>← Back</Text>
       </Pressable>
@@ -71,7 +44,8 @@ export default function ChildSetupScreen() {
       <View style={[styles.header, isWide ? styles.headerWide : null]}>
         <Text style={styles.title}>Tell us about your child</Text>
         <Text style={styles.subtitle}>
-          A little context helps Sturdy make the script feel calmer, clearer, and more age-aware.
+          A little context helps Sturdy make the script feel calmer, clearer, and more grounded in
+          the moment.
         </Text>
       </View>
 
@@ -83,40 +57,46 @@ export default function ChildSetupScreen() {
               autoCorrect={false}
               label="Child name"
               onChangeText={setChildName}
-              placeholder="Optional"
+              placeholder="Enter your child’s name"
               returnKeyType="next"
               value={childName}
             />
           </View>
 
-          <View style={[styles.inputColumn, isWide ? styles.ageColumnWide : null]}>
-            <Input
-              keyboardType="number-pad"
-              label="Exact age"
-              maxLength={2}
-              onChangeText={(value) => setAge(value.replace(/[^0-9]/g, ''))}
-              placeholder="Required"
-              value={age}
-              hint={ageHint}
-            />
-          </View>
-        </View>
+          <View style={styles.ageSection}>
+            <Text style={styles.sectionTitle}>Age</Text>
+            <Text style={styles.sectionHint}>Required. Pick an age from 2 to 17.</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Neurotype</Text>
-          <Text style={styles.sectionHint}>
-            Optional. None is selected by default. Choose any that help us understand the
-            moment.
-          </Text>
-          <View style={styles.chipRow}>
-            {neurotypeOptions.map((option) => (
-              <Chip
-                key={option}
-                label={option}
-                onPress={() => toggleNeurotype(option)}
-                selected={option === 'None' ? isNoneSelected : selectedNeurotypes.includes(option)}
-              />
-            ))}
+            <ScrollView
+              horizontal
+              contentContainerStyle={styles.agePickerRow}
+              showsHorizontalScrollIndicator={false}
+            >
+              {ageOptions.map((option) => {
+                const isSelected = selectedAge === option;
+
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={option}
+                    onPress={() => setSelectedAge(option)}
+                    style={({ pressed }) => [
+                      styles.agePill,
+                      isSelected ? styles.agePillSelected : null,
+                      pressed ? styles.agePillPressed : null,
+                    ]}
+                  >
+                    <Text style={[styles.agePillText, isSelected ? styles.agePillTextSelected : null]}>
+                      {option}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <Text style={styles.ageSelectionText}>
+              {selectedAge ? `Age ${selectedAge} selected.` : 'Choose an age to continue.'}
+            </Text>
           </View>
         </View>
       </View>
@@ -171,25 +151,26 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   formRowWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: 'column',
   },
   inputColumn: {
     minWidth: 0,
   },
   inputColumnWide: {
-    flex: 1,
+    width: '100%',
   },
-  ageColumnWide: {
-    flex: 0.45,
-  },
-  section: {
+  ageSection: {
     gap: spacing.md,
+  },
+  agePickerRow: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   sectionTitle: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 22,
   },
   sectionHint: {
     color: colors.textSecondary,
@@ -197,9 +178,36 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     flexShrink: 1,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  agePill: {
+    minWidth: 56,
+    minHeight: 56,
+    borderRadius: radius.medium,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  agePillSelected: {
+    backgroundColor: colors.chipBackground,
+    borderColor: colors.primary,
+  },
+  agePillPressed: {
+    opacity: 0.82,
+  },
+  agePillText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  agePillTextSelected: {
+    color: colors.primary,
+  },
+  ageSelectionText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

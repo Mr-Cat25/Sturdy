@@ -11,14 +11,14 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { Button } from '../src/components/ui/Button';
-import { Chip } from '../src/components/ui/Chip';
-import { Input } from '../src/components/ui/Input';
-import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
-import { useAuth } from '../src/context/AuthContext';
-import { useChildProfile } from '../src/context/ChildProfileContext';
-import { getParentingScript } from '../src/lib/api';
+import { Button } from '../../src/components/ui/Button';
+import { Chip } from '../../src/components/ui/Chip';
+import { Input } from '../../src/components/ui/Input';
+import { Screen } from '../../src/components/ui/Screen';
+import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
+import { useAuth } from '../../src/context/AuthContext';
+import { useChildProfile } from '../../src/context/ChildProfileContext';
+import { getParentingScript } from '../../src/lib/api';
 
 const quickSituationPrompts = [
   'Bedtime meltdown',
@@ -27,7 +27,7 @@ const quickSituationPrompts = [
   'Refusing homework',
 ];
 
-export default function NowScreen() {
+export default function HomeTabScreen() {
   const navigation = useRouter();
   const params = useLocalSearchParams<{ reset?: string }>();
   const { width } = useWindowDimensions();
@@ -258,25 +258,29 @@ const styles = StyleSheet.create({
   secondaryLinksRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
   },
   secondaryLink: {
-    paddingVertical: spacing.xs,
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.successBackground,
+    justifyContent: 'center',
   },
   secondaryLinkPressed: {
-    opacity: 0.7,
+    opacity: 0.82,
   },
   secondaryLinkText: {
-    color: colors.textSecondary,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 22,
-    textDecorationLine: 'underline',
   },
   errorText: {
     color: '#B45309',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

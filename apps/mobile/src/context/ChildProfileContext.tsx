@@ -3,7 +3,6 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 export type ChildProfileDraft = {
   name?: string;
   childAge: number | null;
-  neurotype: string[];
 };
 
 type ChildProfileContextValue = {
@@ -14,7 +13,6 @@ type ChildProfileContextValue = {
 const initialDraft: ChildProfileDraft = {
   name: undefined,
   childAge: null,
-  neurotype: [],
 };
 
 const ChildProfileContext = createContext<ChildProfileContextValue | null>(null);

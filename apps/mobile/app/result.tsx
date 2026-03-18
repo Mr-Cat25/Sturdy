@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { Button } from '../src/components/ui/Button';
+import { Button as PrimaryButton } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
 import { useAuth } from '../src/context/AuthContext';
@@ -101,7 +101,7 @@ export default function ResultScreen() {
           {isSaved ? <Text style={styles.saveHelperText}>Script saved.</Text> : null}
           {saveErrorMessage ? <Text style={styles.saveErrorText}>{saveErrorMessage}</Text> : null}
 
-          <Button
+          <PrimaryButton
             label="Try Another"
             onPress={() =>
               navigation.navigate({
@@ -129,7 +129,7 @@ export default function ResultScreen() {
             </Text>
 
             <View style={styles.modalActions}>
-              <Button
+              <PrimaryButton
                 label="Create Free Account"
                 onPress={() => {
                   setIsSaveModalVisible(false);
@@ -157,28 +157,41 @@ export default function ResultScreen() {
       </Pressable>
 
       <View style={[styles.header, isWide ? styles.headerWide : null]}>
-        <Text style={styles.title}>Your script</Text>
-        <Text style={styles.subtitle}>A calm first draft you can say in a real voice on a hard day.</Text>
+        <Text style={styles.headerEyebrow}>Sturdy response</Text>
+        <Text style={styles.headerSubtext}>A calm first draft you can say in a real voice on a hard day.</Text>
       </View>
 
-      <View style={[styles.sectionsLayout, isWide ? styles.sectionsLayoutWide : null]}>
-        <View style={[styles.sectionCard, isWide ? styles.sectionCardWide : null]}>
-          <Text style={styles.sectionTitle}>Situation</Text>
-          <Text style={styles.sectionText}>{script.situation_summary}</Text>
+      <View style={[styles.messageCard, isWide ? styles.messageCardWide : null]}>
+        <Text style={styles.messageLabel}>Your message</Text>
+        <Text style={styles.messageText}>{script.situation_summary}</Text>
+      </View>
+
+      <View style={[styles.responseCard, isWide ? styles.responseCardWide : null]}>
+        <View style={styles.responseHeader}>
+          <Text style={styles.responseEyebrow}>Sturdy response</Text>
+          <Text style={styles.responseTitle}>One guided way to say it</Text>
+          <Text style={styles.responseCaption}>Use this as a single flow, not three separate replies.</Text>
         </View>
 
-        <View style={[styles.sectionCard, isWide ? styles.sectionCardWide : null]}>
-          <Text style={styles.sectionTitle}>Regulate</Text>
+        <View style={styles.responseSection}>
+          <Text style={styles.sectionTitle}>REGULATE</Text>
+          <Text style={styles.sectionHelper}>Get low. Slow voice.</Text>
           <Text style={styles.sectionText}>{script.regulate}</Text>
         </View>
 
-        <View style={[styles.sectionCard, isWide ? styles.sectionCardWide : null]}>
-          <Text style={styles.sectionTitle}>Connect</Text>
+        <View style={styles.sectionDivider} />
+
+        <View style={styles.responseSection}>
+          <Text style={styles.sectionTitle}>CONNECT</Text>
+          <Text style={styles.sectionHelper}>Name the feeling. Stay on their side.</Text>
           <Text style={styles.sectionText}>{script.connect}</Text>
         </View>
 
-        <View style={[styles.sectionCard, isWide ? styles.sectionCardWide : null]}>
-          <Text style={styles.sectionTitle}>Guide</Text>
+        <View style={styles.sectionDivider} />
+
+        <View style={styles.responseSection}>
+          <Text style={styles.sectionTitle}>GUIDE</Text>
+          <Text style={styles.sectionHelper}>Offer one next step they can do.</Text>
           <Text style={styles.sectionText}>{script.guide}</Text>
         </View>
       </View>
@@ -201,34 +214,113 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   header: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.xs,
   },
   headerWide: {
     maxWidth: 860,
   },
-  sectionsLayout: {
-    gap: spacing.lg,
-  },
-  sectionsLayoutWide: {
-    alignSelf: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.lg,
-    maxWidth: 1080,
-    width: '100%',
-  },
-  title: {
-    color: colors.text,
-    fontSize: 30,
+  headerEyebrow: {
+    color: colors.primary,
+    fontSize: 13,
     fontWeight: '800',
-    lineHeight: 36,
-    flexShrink: 1,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  subtitle: {
+  headerSubtext: {
     color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 24,
+    flexShrink: 1,
+  },
+  messageCard: {
+    backgroundColor: colors.successBackground,
+    borderRadius: radius.large,
+    padding: spacing.lg,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  messageCardWide: {
+    alignSelf: 'center',
+    maxWidth: 860,
+    width: '100%',
+  },
+  messageLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  messageText: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 28,
+    flexShrink: 1,
+  },
+  responseCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.large,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow,
+  },
+  responseCardWide: {
+    alignSelf: 'center',
+    maxWidth: 860,
+    width: '100%',
+  },
+  responseHeader: {
+    gap: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  responseEyebrow: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  responseTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 30,
+    flexShrink: 1,
+  },
+  responseCaption: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  responseSection: {
+    gap: 6,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(30, 36, 48, 0.08)',
+    marginVertical: spacing.xs,
+  },
+  sectionTitle: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  sectionHelper: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  sectionText: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 28,
     flexShrink: 1,
   },
   saveButton: {
@@ -270,31 +362,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
-  },
-  sectionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
-  },
-  sectionCardWide: {
-    maxWidth: 520,
-    minWidth: 280,
-    width: '48%',
-  },
-  sectionTitle: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  sectionText: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 28,
-    flexShrink: 1,
   },
   modalOverlay: {
     flex: 1,

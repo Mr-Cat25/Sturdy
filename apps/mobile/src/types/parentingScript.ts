@@ -1,7 +1,7 @@
 export type ParentingScriptRequest = {
-  message: string;
+  childName: string;
   childAge: number;
-  neurotype: string[];
+  message: string;
 };
 
 export type ParentingScriptResponse = {

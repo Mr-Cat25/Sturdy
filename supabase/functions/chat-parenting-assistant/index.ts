@@ -14,9 +14,9 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") ?? "gpt-4.1-mini";
 
 type RequestBody = {
-  message?: unknown;
+  childName?: unknown;
   childAge?: unknown;
-  neurotype?: unknown;
+  message?: unknown;
 };
 
 function getCorsHeaders() {
@@ -38,28 +38,23 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function validateInput(body: RequestBody) {
-  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const childName = typeof body.childName === "string" ? body.childName.trim() : "";
   const childAge = typeof body.childAge === "number" ? body.childAge : Number.NaN;
+  const message = typeof body.message === "string" ? body.message.trim() : "";
 
-  if (!message) {
-    throw new Error("message is required and must be a non-empty string.");
+  if (!childName) {
+    throw new Error("childName is required and must be a non-empty string.");
   }
 
   if (!Number.isFinite(childAge) || childAge < 2 || childAge > 17) {
     throw new Error("childAge is required and must be a number between 2 and 17.");
   }
 
-  let neurotype: string[] = [];
-
-  if (body.neurotype !== undefined) {
-    if (!Array.isArray(body.neurotype) || body.neurotype.some((item) => typeof item !== "string")) {
-      throw new Error("neurotype must be an array of strings when provided.");
-    }
-
-    neurotype = body.neurotype.map((item) => item.trim()).filter(Boolean);
+  if (!message) {
+    throw new Error("message is required and must be a non-empty string.");
   }
 
-  return { message, childAge, neurotype };
+  return { childName, childAge, message };
 }
 
 function extractContent(payload: unknown): string {
@@ -117,7 +112,7 @@ async function generateParentingResponse(prompt: string) {
           {
             role: "system",
             content:
-              "You write calm, human parenting scripts for Sturdy. Return strict JSON only.",
+              "You are Sturdy, a calm parenting guide. You help parents know what to say next in hard moments. Return strict JSON only.",
           },
           {
             role: "user",

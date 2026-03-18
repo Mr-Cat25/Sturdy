@@ -4,14 +4,18 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button } from '../src/components/ui/Button';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
-import { useAuth } from '../src/context/AuthContext';
+import { Button } from '../../src/components/ui/Button';
+import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
+import { useAuth } from '../../src/context/AuthContext';
 
-export default function AccountScreen() {
+export default function AccountTabScreen() {
   const { session, isLoading, signOut } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSavedScriptsPress = () => {
+    router.push('/saved');
+  };
 
   const handleSignOut = async () => {
     setErrorMessage('');
@@ -33,28 +37,30 @@ export default function AccountScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.content}>
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Account</Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.title}>Account</Text>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Email</Text>
-        <Text style={styles.emailText}>
-          {session?.user.email ?? (isLoading ? 'Loading account...' : 'No signed-in account')}
-        </Text>
+        <View style={styles.card}>
+          <Text style={styles.label}>Email</Text>
+          <Text style={styles.emailText}>
+            {session?.user.email ?? (isLoading ? 'Loading account...' : 'No signed-in account')}
+          </Text>
 
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {session ? <Button label="Saved Scripts" onPress={handleSavedScriptsPress} /> : null}
 
-        <Button
-          label={isSigningOut ? 'Signing Out...' : 'Sign Out'}
-          onPress={handleSignOut}
-          disabled={isSigningOut || !session || isLoading}
-        />
-      </View>
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+          <Button
+            label={isSigningOut ? 'Signing Out...' : 'Sign Out'}
+            onPress={handleSignOut}
+            disabled={isSigningOut || !session || isLoading}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
