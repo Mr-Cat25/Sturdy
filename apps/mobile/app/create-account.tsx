@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
@@ -21,13 +21,17 @@ export default function CreateAccountScreen() {
 
   const submitLabel = mode === 'sign-up' ? 'Create Account' : 'Sign In';
   const switchLabel = mode === 'sign-up' ? 'Already have an account? Sign in' : 'Need an account? Create one';
-  const passwordHint = useMemo(() => {
-    if (!password.length) {
-      return 'Use at least 6 characters.';
-    }
-
-    return password.length >= 6 ? 'Looks good.' : 'Password must be at least 6 characters.';
-  }, [password]);
+  const screenTitle = mode === 'sign-up' ? 'Create your account' : 'Welcome back';
+  const screenSubtitle =
+    mode === 'sign-up'
+      ? 'Keep your scripts, child profiles, and history in one place.'
+      : 'Get back to your scripts and child profiles.';
+  const emailHint =
+    mode === 'sign-up'
+      ? 'Use an email you can check right now.'
+      : 'Use the email for your Sturdy account.';
+  const passwordHint =
+    mode === 'sign-up' ? 'Use at least 6 characters.' : 'Enter the password for this account.';
 
   useEffect(() => {
     if (!session) {
@@ -40,7 +44,19 @@ export default function CreateAccountScreen() {
   const handleSubmit = async () => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    if (!normalizedEmail || !password) {
+    if (!normalizedEmail) {
+      setInfoMessage('');
+      setErrorMessage('Enter your email and password to continue.');
+      return;
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setInfoMessage('');
+      setErrorMessage('Enter a valid email address.');
+      return;
+    }
+
+    if (!password) {
       setInfoMessage('');
       setErrorMessage('Enter your email and password to continue.');
       return;
@@ -48,7 +64,7 @@ export default function CreateAccountScreen() {
 
     if (password.length < 6) {
       setInfoMessage('');
-      setErrorMessage('Use a password with at least 6 characters.');
+      setErrorMessage('Use at least 6 characters.');
       return;
     }
 
@@ -61,28 +77,42 @@ export default function CreateAccountScreen() {
         const { session: createdSession } = await signUpWithEmail(normalizedEmail, password);
 
         if (!createdSession) {
-          setInfoMessage('Account created. Check your email if confirmation is required, then sign in.');
+          setInfoMessage('Account created. Check your inbox if Sturdy asked you to confirm, then sign in.');
         }
       } else {
         await signInWithEmail(normalizedEmail, password);
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'We could not complete auth right now. Please try again.');
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : mode === 'sign-up'
+            ? "We couldn't create your account right now. Check your email and try again."
+            : "Check your email and password and try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Screen footer={<Button label={isSubmitting ? 'Working...' : submitLabel} onPress={handleSubmit} disabled={isSubmitting} />}>
+    <Screen
+      footer={
+        <Button
+          label={isSubmitting ? 'Working...' : submitLabel}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        />
+      }
+    >
       <Pressable onPress={() => router.back()} style={styles.backButton}>
         <Text style={styles.backButtonText}>← Back</Text>
       </Pressable>
 
       <View style={[styles.header, isWide ? styles.headerWide : null]}>
-        <Text style={styles.title}>Create your free account</Text>
+        <Text style={styles.title}>{screenTitle}</Text>
         <Text style={styles.subtitle}>
-          Save scripts, keep history, and pick up where you left off.
+          {screenSubtitle}
         </Text>
       </View>
 
@@ -140,6 +170,7 @@ export default function CreateAccountScreen() {
             }
           }}
           placeholder="you@example.com"
+          hint={emailHint}
           value={email}
         />
 
@@ -165,8 +196,8 @@ export default function CreateAccountScreen() {
 
         <Text style={styles.cardBody}>
           {mode === 'sign-up'
-            ? 'Create a simple account now so saved scripts can be available later.'
-            : 'Sign in to continue with the same account you already started using.'}
+            ? 'Create an account to save scripts and keep your child profiles close at hand.'
+            : 'Sign in to keep working from where you left off.'}
         </Text>
 
         <Pressable

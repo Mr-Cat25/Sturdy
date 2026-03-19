@@ -21,6 +21,13 @@ export default function ChildSetupScreen() {
   const isChildNameValid = childName.trim().length > 0;
   const isAgeValid = selectedAge !== null;
   const canContinue = isChildNameValid && isAgeValid;
+  const footerHint = !isChildNameValid && !isAgeValid
+    ? 'Add a name and an age to continue.'
+    : !isChildNameValid
+      ? 'Add a child name to continue.'
+      : !isAgeValid
+        ? 'Choose an age from 2 to 17.'
+        : 'You can update this later.';
 
   const handleContinue = () => {
     if (!canContinue || selectedAge === null) {
@@ -36,7 +43,14 @@ export default function ChildSetupScreen() {
   };
 
   return (
-    <Screen footer={<Button label="Continue" onPress={handleContinue} disabled={!canContinue} />}>
+    <Screen
+      footer={
+        <View style={styles.footerBlock}>
+          <Button label="Continue" onPress={handleContinue} disabled={!canContinue} />
+          {!canContinue ? <Text style={styles.footerHint}>{footerHint}</Text> : null}
+        </View>
+      }
+    >
       <Pressable onPress={() => router.back()} style={styles.backButton}>
         <Text style={styles.backButtonText}>← Back</Text>
       </Pressable>
@@ -44,8 +58,7 @@ export default function ChildSetupScreen() {
       <View style={[styles.header, isWide ? styles.headerWide : null]}>
         <Text style={styles.title}>Tell us about your child</Text>
         <Text style={styles.subtitle}>
-          A little context helps Sturdy make the script feel calmer, clearer, and more grounded in
-          the moment.
+          Add a name and age so Sturdy can keep the script personal, calm, and specific.
         </Text>
       </View>
 
@@ -57,15 +70,16 @@ export default function ChildSetupScreen() {
               autoCorrect={false}
               label="Child name"
               onChangeText={setChildName}
-              placeholder="Enter your child’s name"
+              placeholder="Use the name you call them"
               returnKeyType="next"
               value={childName}
+              hint="Required. Use the name you call them."
             />
           </View>
 
           <View style={styles.ageSection}>
             <Text style={styles.sectionTitle}>Age</Text>
-            <Text style={styles.sectionHint}>Required. Pick an age from 2 to 17.</Text>
+            <Text style={styles.sectionHint}>Required. Choose an age from 2 to 17.</Text>
 
             <ScrollView
               horizontal
@@ -95,7 +109,7 @@ export default function ChildSetupScreen() {
             </ScrollView>
 
             <Text style={styles.ageSelectionText}>
-              {selectedAge ? `Age ${selectedAge} selected.` : 'Choose an age to continue.'}
+              {selectedAge ? `Age ${selectedAge} selected.` : 'Pick an age to continue.'}
             </Text>
           </View>
         </View>
@@ -146,6 +160,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxWidth: 980,
     width: '100%',
+  },
+  footerBlock: {
+    gap: spacing.sm,
   },
   formRow: {
     gap: spacing.lg,
@@ -209,5 +226,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
+  },
+  footerHint: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

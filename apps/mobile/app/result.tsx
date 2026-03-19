@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Button as PrimaryButton } from '../src/components/ui/Button';
@@ -31,14 +31,18 @@ export default function ResultScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
+  const [revealStep, setRevealStep] = useState(1);
+  const regulateOpacity = useRef(new Animated.Value(0)).current;
+  const connectOpacity = useRef(new Animated.Value(0)).current;
+  const guideOpacity = useRef(new Animated.Value(0)).current;
   const isWide = width >= 700;
 
   const script: ParentingScriptResponse = {
     situation_summary:
-      getValue(params.situationSummary) || 'We could not load the situation summary for this script.',
-    regulate: getValue(params.regulate) || 'We could not load the regulation step for this script.',
-    connect: getValue(params.connect) || 'We could not load the connection step for this script.',
-    guide: getValue(params.guide) || 'We could not load the guidance step for this script.',
+      getValue(params.situationSummary) || "We couldn't load the situation summary for this script.",
+    regulate: getValue(params.regulate) || "We couldn't load the regulation step for this script.",
+    connect: getValue(params.connect) || "We couldn't load the connection step for this script.",
+    guide: getValue(params.guide) || "We couldn't load the guidance step for this script.",
   };
 
   useEffect(() => {
@@ -46,6 +50,93 @@ export default function ResultScreen() {
     setIsSaving(false);
     setSaveErrorMessage('');
   }, [script.connect, script.guide, script.regulate, script.situation_summary]);
+
+  useEffect(() => {
+    setRevealStep(1);
+    regulateOpacity.setValue(0);
+    connectOpacity.setValue(0);
+    guideOpacity.setValue(0);
+
+    Animated.timing(regulateOpacity, {
+      toValue: 1,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+
+    const connectTimer = setTimeout(() => {
+      setRevealStep(2);
+      Animated.timing(connectOpacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }).start();
+    }, 520);
+
+    const guideTimer = setTimeout(() => {
+      setRevealStep(3);
+      Animated.timing(guideOpacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }).start();
+    }, 1040);
+
+    return () => {
+      clearTimeout(connectTimer);
+      clearTimeout(guideTimer);
+    };
+  }, [connectOpacity, guideOpacity, regulateOpacity, script.connect, script.guide, script.regulate, script.situation_summary]);
+
+  const sections = useMemo(
+    () => [
+      {
+        key: 'regulate',
+        framing: 'Start here',
+        label: 'Regulate',
+        helper: 'Set the tone first.',
+        body: script.regulate,
+        opacity: regulateOpacity,
+      },
+      {
+        key: 'connect',
+        framing: 'Then say',
+        label: 'Connect',
+        helper: 'Stay on their side.',
+        body: script.connect,
+        opacity: connectOpacity,
+      },
+      {
+        key: 'guide',
+        framing: 'Next',
+        label: 'Guide',
+        helper: 'Offer one simple next step.',
+        body: script.guide,
+        opacity: guideOpacity,
+      },
+    ],
+    [connectOpacity, guideOpacity, regulateOpacity, script.connect, script.guide, script.regulate],
+  );
+
+  const handleAdvanceReveal = () => {
+    if (revealStep === 1) {
+      setRevealStep(2);
+      Animated.timing(connectOpacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    if (revealStep === 2) {
+      setRevealStep(3);
+      Animated.timing(guideOpacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
 
   const handleSaveScript = async () => {
     if (isLoading || isSaving) {
@@ -72,7 +163,7 @@ export default function ResultScreen() {
       });
       setIsSaved(true);
     } catch {
-      setSaveErrorMessage('We could not save this script right now. Please try again.');
+      setSaveErrorMessage("We couldn't save this script right now. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -85,6 +176,50 @@ export default function ResultScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={handleSaveScript}
+
+      useEffect(() => {
+        setRevealStep(1);
+
+        const timers = [
+          window.setTimeout(() => setRevealStep(2), 520),
+          window.setTimeout(() => setRevealStep(3), 1040),
+        ];
+
+        return () => {
+          timers.forEach((timer) => window.clearTimeout(timer));
+        };
+      }, [script.connect, script.guide, script.regulate, script.situation_summary]);
+
+      const sections = useMemo(
+        () => [
+          {
+            key: 'regulate',
+            framing: 'Start here',
+            label: 'Regulate',
+            helper: 'Set the tone first.',
+            body: script.regulate,
+          },
+          {
+            key: 'connect',
+            framing: 'Then say',
+            label: 'Connect',
+            helper: 'Stay on their side.',
+            body: script.connect,
+          },
+          {
+            key: 'guide',
+            framing: 'Next',
+            label: 'Guide',
+            helper: 'Offer one simple next step.',
+            body: script.guide,
+          },
+        ],
+        [script.connect, script.guide, script.regulate],
+      );
+
+      const handleAdvanceReveal = () => {
+        setRevealStep((current) => Math.min(current + 1, 3));
+      };
             disabled={isLoading || isSaving}
             style={({ pressed }) => [
               styles.saveButton,
@@ -125,12 +260,12 @@ export default function ResultScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Save this script</Text>
             <Text style={styles.modalBody}>
-              Create a free account to save this script and come back to it later.
+              Create an account to save this script and come back to it later.
             </Text>
 
             <View style={styles.modalActions}>
               <PrimaryButton
-                label="Create Free Account"
+                label="Create Account"
                 onPress={() => {
                   setIsSaveModalVisible(false);
                   navigation.push('/create-account');
@@ -145,7 +280,7 @@ export default function ResultScreen() {
                   pressed ? styles.maybeLaterButtonPressed : null,
                 ]}
               >
-                <Text style={styles.maybeLaterButtonText}>Maybe Later</Text>
+                <Text style={styles.maybeLaterButtonText}>Not now</Text>
               </Pressable>
             </View>
           </View>
@@ -167,161 +302,39 @@ export default function ResultScreen() {
       </View>
 
       <View style={[styles.responseCard, isWide ? styles.responseCardWide : null]}>
-        <View style={styles.responseHeader}>
+        <Pressable onPress={handleAdvanceReveal} style={({ pressed }) => [styles.responseHeader, pressed ? styles.responseHeaderPressed : null]}>
           <Text style={styles.responseEyebrow}>Sturdy response</Text>
-          <Text style={styles.responseTitle}>One guided way to say it</Text>
-          <Text style={styles.responseCaption}>Use this as a single flow, not three separate replies.</Text>
-        </View>
+          <Text style={styles.responseTitle}>Follow this in order</Text>
+          <Text style={styles.responseCaption}>
+            It reveals one step at a time so you can read it like a real conversation.
+          </Text>
+          {revealStep < 3 ? <Text style={styles.responseTapHint}>Tap to bring the next step in.</Text> : null}
+        </Pressable>
 
-        <View style={styles.responseSection}>
-          <Text style={styles.sectionTitle}>REGULATE</Text>
-          <Text style={styles.sectionHelper}>Get low. Slow voice.</Text>
-          <Text style={styles.sectionText}>{script.regulate}</Text>
-        </View>
+        <View style={styles.sequenceList}>
+          {sections.map((section, index) => (
+            <Animated.View
+              key={section.key}
+              style={[
+                styles.sequenceSection,
+                index === sections.length - 1 ? styles.sequenceSectionLast : null,
+                {
+                  opacity: section.opacity,
+                },
+              ]}
+            >
+              <View style={styles.sequenceFramingRow}>
+                <Text style={styles.sequenceFraming}>{section.framing}</Text>
+                {revealStep >= index + 1 ? <View style={styles.sequenceDot} /> : null}
+              </View>
 
-        <View style={styles.sectionDivider} />
-
-        <View style={styles.responseSection}>
-          <Text style={styles.sectionTitle}>CONNECT</Text>
-          <Text style={styles.sectionHelper}>Name the feeling. Stay on their side.</Text>
-          <Text style={styles.sectionText}>{script.connect}</Text>
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        <View style={styles.responseSection}>
-          <Text style={styles.sectionTitle}>GUIDE</Text>
-          <Text style={styles.sectionHelper}>Offer one next step they can do.</Text>
-          <Text style={styles.sectionText}>{script.guide}</Text>
+              <Text style={styles.sequenceLabel}>{section.label}</Text>
+              <Text style={styles.sequenceHelper}>{section.helper}</Text>
+              <Text style={styles.sequenceText}>{section.body}</Text>
+            </Animated.View>
+          ))}
         </View>
       </View>
-    </Screen>
-  );
-}
-
-const styles = StyleSheet.create({
-  footerActions: {
-    gap: spacing.sm,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  header: {
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  headerWide: {
-    maxWidth: 860,
-  },
-  headerEyebrow: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  headerSubtext: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-    flexShrink: 1,
-  },
-  messageCard: {
-    backgroundColor: colors.successBackground,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  messageCardWide: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    width: '100%',
-  },
-  messageLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  messageText: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 28,
-    flexShrink: 1,
-  },
-  responseCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow,
-  },
-  responseCardWide: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    width: '100%',
-  },
-  responseHeader: {
-    gap: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
-  responseEyebrow: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  responseTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 30,
-    flexShrink: 1,
-  },
-  responseCaption: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  responseSection: {
-    gap: 6,
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: 'rgba(30, 36, 48, 0.08)',
-    marginVertical: spacing.xs,
-  },
-  sectionTitle: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  sectionHelper: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  sectionText: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 28,
-    flexShrink: 1,
   },
   saveButton: {
     minHeight: 56,

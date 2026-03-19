@@ -16,14 +16,26 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function normalizeAuthError(message: string) {
   if (message.toLowerCase().includes('invalid login credentials')) {
-    return 'That email or password did not match. Please try again.';
+    return 'That email or password did not match. Try again.';
   }
 
   if (message.toLowerCase().includes('email not confirmed')) {
-    return 'Check your email to confirm your account, then sign in.';
+    return 'Check your inbox for the confirmation email, then sign in.';
   }
 
-  return message;
+  if (message.toLowerCase().includes('user already registered')) {
+    return 'That email already has an account. Try signing in instead.';
+  }
+
+  if (message.toLowerCase().includes('invalid email')) {
+    return 'Enter a valid email address.';
+  }
+
+  if (message.toLowerCase().includes('password should be at least')) {
+    return 'Use at least 6 characters.';
+  }
+
+  return "We couldn't complete that just now. Please try again.";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

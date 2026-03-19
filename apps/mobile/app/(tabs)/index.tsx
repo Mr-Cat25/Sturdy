@@ -41,6 +41,13 @@ export default function HomeTabScreen() {
   const childName = draft.name;
   const childAge = draft.childAge;
   const resetToken = Array.isArray(params.reset) ? params.reset[0] : params.reset;
+  const scriptHelperText = !childName?.trim()
+    ? 'Finish child setup to unlock scripts.'
+    : childAge === null
+      ? 'Add an age to keep the script specific.'
+      : !situation.trim()
+        ? 'A few words about the moment is enough.'
+        : '';
 
   useEffect(() => {
     if (!resetToken) {
@@ -59,7 +66,18 @@ export default function HomeTabScreen() {
       childAge,
     });
 
-    if (!message || childAge === null || !childName) {
+    if (!childName?.trim()) {
+      setErrorMessage('Finish child setup to unlock scripts.');
+      return;
+    }
+
+    if (childAge === null) {
+      setErrorMessage('Add an age to keep the script specific.');
+      return;
+    }
+
+    if (!message) {
+      setErrorMessage('Add a few words about the moment to continue.');
       return;
     }
 
@@ -91,7 +109,11 @@ export default function HomeTabScreen() {
         error:
           error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
       });
-      setErrorMessage('We could not get a script right now. Please try again.');
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "We couldn't get a script right now. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +136,7 @@ export default function HomeTabScreen() {
           <View style={[styles.header, isWide ? styles.headerWide : null]}>
             <Text style={styles.title}>What&apos;s happening right now?</Text>
             <Text style={styles.subtitle}>
-              Describe the moment and get calm words to say.
+              Describe the moment and get calm words you can say right away.
             </Text>
           </View>
 
@@ -131,7 +153,7 @@ export default function HomeTabScreen() {
               }}
               placeholder="My child is screaming because we have to leave the park."
               value={situation}
-              hint="You&apos;re not writing a report. A simple snapshot is enough."
+              hint="A few words is enough. What happened, where are you, and what do you need to say?"
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           </View>
@@ -140,8 +162,9 @@ export default function HomeTabScreen() {
             <Button
               label={isLoading ? 'Getting Script...' : 'Get Script'}
               onPress={handleGetScript}
-              disabled={!childName || childAge === null || !situation.trim() || isLoading}
+              disabled={!childName?.trim() || childAge === null || !situation.trim() || isLoading}
             />
+            {scriptHelperText ? <Text style={styles.buttonHint}>{scriptHelperText}</Text> : null}
           </View>
 
           <View style={styles.chipSection}>
@@ -177,7 +200,7 @@ export default function HomeTabScreen() {
               onPress={() => router.push('/saved')}
               style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
             >
-              <Text style={styles.secondaryLinkText}>Saved Scripts</Text>
+              <Text style={styles.secondaryLinkText}>Saved</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -239,6 +262,7 @@ const styles = StyleSheet.create({
   },
   buttonWrap: {
     paddingTop: spacing.xs,
+    gap: spacing.xs,
   },
   chipSection: {
     gap: spacing.sm,
@@ -282,5 +306,11 @@ const styles = StyleSheet.create({
     color: '#B45309',
     fontSize: 15,
     lineHeight: 22,
+  },
+  buttonHint: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

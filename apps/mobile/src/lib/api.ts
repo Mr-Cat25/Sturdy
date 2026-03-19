@@ -33,7 +33,7 @@ export async function getParentingScript(
       error:
         error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
     });
-    throw new Error('network-error');
+    throw new Error("We couldn't reach Sturdy right now. Check your connection and try again.");
   }
 
   console.log('[STURDY_DEBUG] Response status', response.status);
@@ -59,13 +59,13 @@ export async function getParentingScript(
       'error' in data &&
       typeof data.error === 'string'
         ? data.error
-        : 'request-failed';
+        : "We couldn't get a script right now. Please try again.";
 
     throw new Error(errorMessage);
   }
 
   if (!isParentingScriptResponse(data)) {
-    throw new Error('invalid-response');
+    throw new Error("We couldn't read that script just now. Please try again.");
   }
 
   return data;

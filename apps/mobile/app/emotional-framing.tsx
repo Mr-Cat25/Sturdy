@@ -29,10 +29,10 @@ export default function EmotionalFramingScreen() {
           </View>
 
           <View style={styles.copyBlock}>
-            <Text style={styles.title}>Parenting moments can escalate fast.</Text>
+            <Text style={styles.title}>Words for the next 30 seconds.</Text>
             <Text style={styles.body}>
-              Sometimes you just need the right words. Sturdy helps you regulate, connect,
-              and guide your child.
+              Sturdy helps you regulate, connect, and guide with calm words that stay specific to
+              the moment.
             </Text>
           </View>
         </View>

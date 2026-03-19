@@ -18,11 +18,11 @@ export async function loadSavedScripts(): Promise<SavedScriptRow[]> {
   } = await supabase.auth.getUser();
 
   if (userError) {
-    throw userError;
+    throw new Error("We couldn't load your account right now. Please try again.");
   }
 
   if (!user) {
-    throw new Error('No signed-in user');
+    throw new Error('Sign in to view saved scripts.');
   }
 
   const { data, error } = await supabase
@@ -32,7 +32,7 @@ export async function loadSavedScripts(): Promise<SavedScriptRow[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw error;
+    throw new Error("We couldn't load your saved scripts right now. Please try again.");
   }
 
   return (data ?? []) as SavedScriptRow[];

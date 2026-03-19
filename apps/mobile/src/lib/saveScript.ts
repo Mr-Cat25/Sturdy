@@ -31,11 +31,11 @@ export async function saveScript({
   } = await supabase.auth.getUser();
 
   if (userError) {
-    throw userError;
+    throw new Error("We couldn't load your account right now. Please try again.");
   }
 
   if (!user) {
-    throw new Error('No signed-in user');
+    throw new Error('Sign in to save scripts.');
   }
 
   const { data, error } = await supabase
@@ -52,7 +52,7 @@ export async function saveScript({
     .single();
 
   if (error) {
-    throw error;
+    throw new Error("We couldn't save this script right now. Please try again.");
   }
 
   return data as SavedScriptRow;

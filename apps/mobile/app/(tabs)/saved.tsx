@@ -67,7 +67,7 @@ export default function SavedTabScreen() {
         }
       } catch {
         if (isMounted) {
-          setErrorMessage('We could not load your saved scripts right now. Please try again.');
+          setErrorMessage("We couldn't load your saved scripts right now. Please try again.");
         }
       } finally {
         if (isMounted) {
@@ -95,7 +95,7 @@ export default function SavedTabScreen() {
       const scripts = await loadSavedScripts();
       setSavedScripts(scripts);
     } catch {
-      setErrorMessage('We could not load your saved scripts right now. Please try again.');
+      setErrorMessage("We couldn't load your saved scripts right now. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -156,13 +156,13 @@ export default function SavedTabScreen() {
 
       {isAuthLoading || isLoading ? (
         <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>Loading saved scripts...</Text>
+          <Text style={styles.stateTitle}>Loading your saved scripts...</Text>
         </View>
       ) : null}
 
       {!isAuthLoading && !session ? (
         <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>Sign in to view saved scripts.</Text>
+          <Text style={styles.stateTitle}>Sign in to see your saved scripts.</Text>
         </View>
       ) : null}
 
@@ -178,6 +178,7 @@ export default function SavedTabScreen() {
       {!isLoading && !errorMessage && session && savedScripts.length === 0 ? (
         <View style={styles.stateCard}>
           <Text style={styles.stateTitle}>No saved scripts yet.</Text>
+          <Text style={styles.stateBody}>Save a script here when you want to come back to it.</Text>
         </View>
       ) : null}
 
@@ -250,6 +251,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     lineHeight: 24,
+  },
+  stateBody: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
   },
   errorText: {
     color: '#B45309',

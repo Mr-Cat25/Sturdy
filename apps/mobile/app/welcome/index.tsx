@@ -45,7 +45,7 @@ export default function WelcomeScreen() {
 
             <View style={styles.headlineBlock}>
               <Text style={styles.eyebrow}>For hard parenting moments</Text>
-              <Text style={styles.title}>What do I say when everything is escalating?</Text>
+              <Text style={styles.title}>What do I say right now?</Text>
               <Text style={styles.subtitle}>
                 Sturdy gives you calm, age-aware words for the exact moment in front of you.
               </Text>

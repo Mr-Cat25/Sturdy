@@ -26,7 +26,7 @@ export default function AccountTabScreen() {
       router.replace('/welcome');
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'We could not sign you out right now. Please try again.',
+        error instanceof Error ? error.message : "We couldn't sign you out right now. Please try again.",
       );
     } finally {
       setIsSigningOut(false);
@@ -43,15 +43,18 @@ export default function AccountTabScreen() {
 
         <View style={styles.header}>
           <Text style={styles.title}>Account</Text>
+          <Text style={styles.subtitle}>Manage your account and get back to the work you saved.</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>Signed in as</Text>
           <Text style={styles.emailText}>
-            {session?.user.email ?? (isLoading ? 'Loading account...' : 'No signed-in account')}
+            {session?.user.email ?? (isLoading ? 'Loading account...' : 'Sign in to manage your account.')}
           </Text>
 
-          {session ? <Button label="Saved Scripts" onPress={handleSavedScriptsPress} /> : null}
+          {session ? <Button label="Saved scripts" onPress={handleSavedScriptsPress} /> : null}
+
+          {session ? <Button label="Add child" onPress={() => router.push('/child-setup')} /> : null}
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
@@ -89,12 +92,18 @@ const styles = StyleSheet.create({
   },
   header: {
     marginTop: spacing.xs,
+    gap: spacing.xs,
   },
   title: {
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
     lineHeight: 36,
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    lineHeight: 24,
   },
   card: {
     backgroundColor: colors.surface,
