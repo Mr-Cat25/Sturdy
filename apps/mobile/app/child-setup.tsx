@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useRouter } from 'expo-router';
 
+import { Card } from '../src/components/ui/Card';
 import { Button } from '../src/components/ui/Button';
 import { Input } from '../src/components/ui/Input';
 import { Screen } from '../src/components/ui/Screen';
@@ -62,7 +63,7 @@ export default function ChildSetupScreen() {
         </Text>
       </View>
 
-      <View style={[styles.card, isWide ? styles.cardWide : null]}>
+      <Card style={[styles.card, isWide ? styles.cardWide : null]}>
         <View style={[styles.formRow, isWide ? styles.formRowWide : null]}>
           <View style={[styles.inputColumn, isWide ? styles.inputColumnWide : null]}>
             <Input
@@ -113,7 +114,7 @@ export default function ChildSetupScreen() {
             </Text>
           </View>
         </View>
-      </View>
+      </Card>
     </Screen>
   );
 }
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   header: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.xs,
   },
   headerWide: {
@@ -140,21 +141,17 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 35,
     flexShrink: 1,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     flexShrink: 1,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.xl,
-    ...shadow,
+    gap: spacing.lg,
   },
   cardWide: {
     alignSelf: 'center',
@@ -162,10 +159,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   footerBlock: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   formRow: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   formRowWide: {
     flexDirection: 'column',
@@ -177,7 +174,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ageSection: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   agePickerRow: {
     gap: spacing.sm,
@@ -185,14 +182,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   sectionHint: {
     color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     flexShrink: 1,
   },
   agePill: {
@@ -201,7 +198,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.medium,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardBackground,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
@@ -215,22 +212,22 @@ const styles = StyleSheet.create({
   },
   agePillText: {
     color: colors.textSecondary,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   agePillTextSelected: {
     color: colors.primary,
   },
   ageSelectionText: {
     color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
   footerHint: {
     color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: 'center',
   },
 });

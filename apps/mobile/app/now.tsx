@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
+import { Card } from '../src/components/ui/Card';
 import { Button } from '../src/components/ui/Button';
 import { Chip } from '../src/components/ui/Chip';
 import { Input } from '../src/components/ui/Input';
@@ -140,7 +141,7 @@ export default function NowScreen() {
             </Text>
           </View>
 
-          <View style={[styles.formCard, isWide ? styles.formCardWide : null]}>
+          <Card style={[styles.formCard, isWide ? styles.formCardWide : null]}>
             <Input
               label="Describe the moment"
               multiline
@@ -156,7 +157,7 @@ export default function NowScreen() {
               hint="A few words is enough. What happened, where are you, and what do you need to say?"
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          </View>
+          </Card>
 
           <View style={styles.buttonWrap}>
             <Button
@@ -249,11 +250,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   formCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.md,
-    ...shadow,
   },
   formCardWide: {
     maxWidth: 760,

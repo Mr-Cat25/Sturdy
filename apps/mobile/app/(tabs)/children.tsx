@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { Screen } from '../../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
+import { colors, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function ChildrenTabScreen() {
@@ -15,7 +16,7 @@ export default function ChildrenTabScreen() {
         <Text style={styles.title}>Children</Text>
         <Text style={styles.subtitle}>Keep each child profile simple, personal, and easy to update.</Text>
 
-        <View style={styles.card}>
+        <Card style={styles.card}>
           <Text style={styles.stateTitle}>
             {session ? 'No children added yet.' : 'Sign in to manage child profiles.'}
           </Text>
@@ -29,7 +30,7 @@ export default function ChildrenTabScreen() {
             label={session ? 'Add child' : 'Sign in'}
             onPress={() => router.push(session ? '/child-setup' : '/create-account')}
           />
-        </View>
+        </Card>
       </View>
     </Screen>
   );
@@ -37,35 +38,31 @@ export default function ChildrenTabScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   title: {
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 35,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    gap: spacing.sm,
   },
   stateTitle: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   stateBody: {
     color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
   },
 });

@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
+import { Card } from '../src/components/ui/Card';
 import { Button } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
+import { colors, radius, spacing } from '../src/components/ui/theme';
 import { useAuth } from '../src/context/AuthContext';
 import { loadSavedScripts, type SavedScriptRow } from '../src/lib/loadSavedScripts';
 
@@ -155,30 +156,30 @@ export default function SavedScriptsScreen() {
       </View>
 
       {isAuthLoading || isLoading ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.stateTitle}>Loading saved scripts...</Text>
-        </View>
+        </Card>
       ) : null}
 
       {!isAuthLoading && !session ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.stateTitle}>Sign in to view saved scripts.</Text>
-        </View>
+        </Card>
       ) : null}
 
       {!isLoading && Boolean(errorMessage) ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.errorText}>{errorMessage}</Text>
           <View style={styles.retryWrap}>
             <Button label="Try Again" onPress={handleRetry} />
           </View>
-        </View>
+        </Card>
       ) : null}
 
       {!isLoading && !errorMessage && session && savedScripts.length === 0 ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.stateTitle}>No saved scripts yet.</Text>
-        </View>
+        </Card>
       ) : null}
 
       {!isLoading && !errorMessage && session ? (
@@ -188,19 +189,21 @@ export default function SavedScriptsScreen() {
               accessibilityRole="button"
               key={script.id}
               onPress={() => setSelectedScript(script)}
-              style={({ pressed }) => [styles.scriptCard, pressed ? styles.scriptCardPressed : null]}
+              style={({ pressed }) => [styles.scriptCardPressedWrap, pressed ? styles.scriptCardPressed : null]}
             >
-              <View style={styles.scriptMetaRow}>
-                <Text style={styles.scriptDate}>{formatSavedAt(script.created_at)}</Text>
-                {script.child_age !== null ? (
-                  <View style={styles.ageChip}>
-                    <Text style={styles.ageChipText}>Age {script.child_age}</Text>
-                  </View>
-                ) : null}
-              </View>
+              <Card style={styles.scriptCard}>
+                <View style={styles.scriptMetaRow}>
+                  <Text style={styles.scriptDate}>{formatSavedAt(script.created_at)}</Text>
+                  {script.child_age !== null ? (
+                    <View style={styles.ageChip}>
+                      <Text style={styles.ageChipText}>Age {script.child_age}</Text>
+                    </View>
+                  ) : null}
+                </View>
 
-              <Text style={styles.scriptTitle}>{script.situation_summary}</Text>
-              <Text style={styles.scriptPreview}>{buildPreview(script)}</Text>
+                <Text style={styles.scriptTitle}>{script.situation_summary}</Text>
+                <Text style={styles.scriptPreview}>{buildPreview(script)}</Text>
+              </Card>
             </Pressable>
           ))}
         </View>
@@ -239,11 +242,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   stateCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.md,
-    ...shadow,
   },
   stateTitle: {
     color: colors.text,
@@ -263,11 +262,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   scriptCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.sm,
-    ...shadow,
+  },
+  scriptCardPressedWrap: {
+    borderRadius: radius.large,
   },
   scriptCardPressed: {
     backgroundColor: colors.successBackground,
@@ -316,12 +314,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.md,
     maxHeight: '82%',
-    ...shadow,
   },
   modalTitle: {
     color: colors.text,

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
+import { Card } from '../src/components/ui/Card';
 import { Button } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
 import { sturdyTheme } from '../src/theme';
@@ -21,7 +22,7 @@ export default function EmotionalFramingScreen() {
           <View style={styles.ambientCool} />
         </View>
 
-        <View style={[styles.card, isWide ? styles.cardWide : null]}>
+        <Card style={[styles.card, isWide ? styles.cardWide : null]}>
           <View style={styles.illustrationWrap}>
             <View style={styles.illustrationOuter}>
               <View style={styles.illustrationInner} />
@@ -35,7 +36,7 @@ export default function EmotionalFramingScreen() {
               the moment.
             </Text>
           </View>
-        </View>
+        </Card>
       </View>
     </Screen>
   );
@@ -75,14 +76,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(111, 168, 255, 0.10)',
   },
   card: {
-    ...components.card,
-    ...shadows.card,
-    backgroundColor: colors.cardBackground,
     alignSelf: 'center',
     width: '100%',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
-    gap: spacing.xl,
+    gap: spacing.lg,
     justifyContent: 'center',
   },
   cardWide: {
@@ -109,17 +105,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(123, 207, 166, 0.24)',
   },
   copyBlock: {
-    gap: spacing.md,
+    gap: spacing.xs,
     alignItems: 'center',
   },
   title: {
     color: colors.textPrimary,
-    ...typography.h1,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 40,
     textAlign: 'center',
   },
   body: {
     color: colors.textSecondary,
-    ...typography.body,
+    fontSize: 16,
+    lineHeight: 24,
     textAlign: 'center',
     maxWidth: 520,
   },

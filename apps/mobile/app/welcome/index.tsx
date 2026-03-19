@@ -1,6 +1,7 @@
 import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
+import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { Screen } from '../../src/components/ui/Screen';
 import { useAuth } from '../../src/context/AuthContext';
@@ -36,7 +37,7 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={[styles.heroShell, isWide ? styles.heroShellWide : null]}>
-          <View style={[styles.heroCard, isWide ? styles.heroCardWide : null]}>
+          <Card style={[styles.heroCard, isWide ? styles.heroCardWide : null]}>
             <View style={styles.brandRow}>
               <View style={styles.logoBadge}>
                 <Image source={require('../../assets/logo.png')} style={styles.logoImage} />
@@ -60,7 +61,7 @@ export default function WelcomeScreen() {
               />
               <Text style={styles.ctaCaption}>Get a calm script in under a minute.</Text>
             </View>
-          </View>
+          </Card>
         </View>
       </View>
     </Screen>
@@ -111,10 +112,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroCard: {
-    ...components.card,
-    ...shadows.card,
-    backgroundColor: colors.cardBackground,
-    padding: spacing.xl,
     gap: spacing.xl,
   },
   heroCardWide: {

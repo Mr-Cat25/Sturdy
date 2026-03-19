@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Card } from '../../src/components/ui/Card';
 import { Screen } from '../../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
 
@@ -10,12 +11,12 @@ export default function ChildDetailScreen() {
         <Text style={styles.title}>Edit child profile</Text>
         <Text style={styles.subtitle}>Keep details current so scripts stay specific to the moment.</Text>
 
-        <View style={styles.card}>
+        <Card style={styles.card}>
           <Text style={styles.cardTitle}>Update details</Text>
           <Text style={styles.cardBody}>Change the name if the child goes by something different.</Text>
           <Text style={styles.cardBody}>Keep the age current.</Text>
           <Text style={styles.cardBody}>Delete the profile if you no longer need it.</Text>
-        </View>
+        </Card>
       </View>
     </Screen>
   );
@@ -37,11 +38,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.sm,
-    ...shadow,
   },
   cardTitle: {
     color: colors.text,

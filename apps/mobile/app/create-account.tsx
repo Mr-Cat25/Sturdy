@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
+import { Card } from '../src/components/ui/Card';
 import { Button } from '../src/components/ui/Button';
 import { Input } from '../src/components/ui/Input';
 import { Screen } from '../src/components/ui/Screen';
@@ -116,7 +117,7 @@ export default function CreateAccountScreen() {
         </Text>
       </View>
 
-      <View style={[styles.card, isWide ? styles.cardWide : null]}>
+      <Card style={[styles.card, isWide ? styles.cardWide : null]}>
         <View style={styles.modeRow}>
           <Pressable
             accessibilityRole="button"
@@ -211,7 +212,7 @@ export default function CreateAccountScreen() {
         >
           <Text style={styles.switchButtonText}>{switchLabel}</Text>
         </Pressable>
-      </View>
+      </Card>
     </Screen>
   );
 }
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   header: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.xs,
   },
   headerWide: {
@@ -238,19 +239,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 35,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    gap: spacing.sm,
   },
   cardWide: {
     alignSelf: 'center',
@@ -279,34 +276,34 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: radius.medium - 4,
   },
   modeChipActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardBackground,
   },
   modeChipPressed: {
     opacity: 0.88,
   },
   modeChipText: {
     color: colors.textSecondary,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   modeChipTextActive: {
     color: colors.text,
   },
   cardBody: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   errorText: {
     color: '#B45309',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   infoText: {
     color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   switchButton: {
     minHeight: 48,
@@ -321,9 +318,9 @@ const styles = StyleSheet.create({
   },
   switchButtonText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 20,
     textAlign: 'center',
   },
 });

@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
-import { colors, radius, spacing } from './theme';
+import { colors, radius, shadow, spacing } from './theme';
 
 type ButtonProps = {
   label: string;
@@ -32,7 +32,7 @@ export function Button({ label, onPress, disabled = false, icon, style }: Button
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 56,
+    minHeight: 58,
     borderRadius: radius.medium,
     backgroundColor: colors.primary,
     alignItems: 'center',
@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+    ...shadow.soft,
   },
   buttonPressed: {
     backgroundColor: colors.primaryPressed,
@@ -50,10 +51,10 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     flexShrink: 1,
-    lineHeight: 24,
+    lineHeight: 22,
     textAlign: 'center',
   },
 });

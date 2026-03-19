@@ -11,11 +11,12 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
+import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { Chip } from '../../src/components/ui/Chip';
 import { Input } from '../../src/components/ui/Input';
 import { Screen } from '../../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
+import { colors, radius, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useChildProfile } from '../../src/context/ChildProfileContext';
 import { getParentingScript } from '../../src/lib/api';
@@ -140,7 +141,7 @@ export default function HomeTabScreen() {
             </Text>
           </View>
 
-          <View style={[styles.formCard, isWide ? styles.formCardWide : null]}>
+          <Card style={[styles.formCard, isWide ? styles.formCardWide : null]}>
             <Input
               label="Describe the moment"
               multiline
@@ -156,7 +157,7 @@ export default function HomeTabScreen() {
               hint="A few words is enough. What happened, where are you, and what do you need to say?"
             />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          </View>
+          </Card>
 
           <View style={styles.buttonWrap}>
             <Button
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: spacing.xl,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   header: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.md,
   },
   headerWide: {
@@ -239,21 +240,17 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 35,
     flexShrink: 1,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     flexShrink: 1,
   },
   formCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    gap: spacing.sm,
   },
   formCardWide: {
     maxWidth: 760,
@@ -261,17 +258,17 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   buttonWrap: {
-    paddingTop: spacing.xs,
+    paddingTop: 4,
     gap: spacing.xs,
   },
   chipSection: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   chipSectionTitle: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: 18,
     textTransform: 'uppercase',
   },
   chipRow: {
@@ -283,7 +280,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    paddingTop: spacing.xs,
+    paddingTop: 4,
   },
   secondaryLink: {
     minHeight: 44,
@@ -298,19 +295,19 @@ const styles = StyleSheet.create({
   },
   secondaryLinkText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   errorText: {
     color: '#B45309',
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 18,
   },
   buttonHint: {
     color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: 'center',
   },
 });

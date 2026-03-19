@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
+import { Card } from '../src/components/ui/Card';
 import { Button as PrimaryButton } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
+import { colors, radius, spacing } from '../src/components/ui/theme';
 import { useAuth } from '../src/context/AuthContext';
 import { useChildProfile } from '../src/context/ChildProfileContext';
 import { saveScript } from '../src/lib/saveScript';
@@ -176,50 +177,6 @@ export default function ResultScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={handleSaveScript}
-
-      useEffect(() => {
-        setRevealStep(1);
-
-        const timers = [
-          window.setTimeout(() => setRevealStep(2), 520),
-          window.setTimeout(() => setRevealStep(3), 1040),
-        ];
-
-        return () => {
-          timers.forEach((timer) => window.clearTimeout(timer));
-        };
-      }, [script.connect, script.guide, script.regulate, script.situation_summary]);
-
-      const sections = useMemo(
-        () => [
-          {
-            key: 'regulate',
-            framing: 'Start here',
-            label: 'Regulate',
-            helper: 'Set the tone first.',
-            body: script.regulate,
-          },
-          {
-            key: 'connect',
-            framing: 'Then say',
-            label: 'Connect',
-            helper: 'Stay on their side.',
-            body: script.connect,
-          },
-          {
-            key: 'guide',
-            framing: 'Next',
-            label: 'Guide',
-            helper: 'Offer one simple next step.',
-            body: script.guide,
-          },
-        ],
-        [script.connect, script.guide, script.regulate],
-      );
-
-      const handleAdvanceReveal = () => {
-        setRevealStep((current) => Math.min(current + 1, 3));
-      };
             disabled={isLoading || isSaving}
             style={({ pressed }) => [
               styles.saveButton,
@@ -296,12 +253,12 @@ export default function ResultScreen() {
         <Text style={styles.headerSubtext}>A calm first draft you can say in a real voice on a hard day.</Text>
       </View>
 
-      <View style={[styles.messageCard, isWide ? styles.messageCardWide : null]}>
+      <Card style={[styles.messageCard, isWide ? styles.messageCardWide : null]}>
         <Text style={styles.messageLabel}>Your message</Text>
         <Text style={styles.messageText}>{script.situation_summary}</Text>
-      </View>
+      </Card>
 
-      <View style={[styles.responseCard, isWide ? styles.responseCardWide : null]}>
+      <Card style={[styles.responseCard, isWide ? styles.responseCardWide : null]}>
         <Pressable onPress={handleAdvanceReveal} style={({ pressed }) => [styles.responseHeader, pressed ? styles.responseHeaderPressed : null]}>
           <Text style={styles.responseEyebrow}>Sturdy response</Text>
           <Text style={styles.responseTitle}>Follow this in order</Text>
@@ -318,9 +275,7 @@ export default function ResultScreen() {
               style={[
                 styles.sequenceSection,
                 index === sections.length - 1 ? styles.sequenceSectionLast : null,
-                {
-                  opacity: section.opacity,
-                },
+                { opacity: section.opacity },
               ]}
             >
               <View style={styles.sequenceFramingRow}>
@@ -334,7 +289,152 @@ export default function ResultScreen() {
             </Animated.View>
           ))}
         </View>
-      </View>
+      </Card>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  footerActions: {
+    gap: spacing.xs,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  backButtonText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  header: {
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  headerWide: {
+    maxWidth: 860,
+  },
+  headerEyebrow: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  headerSubtext: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    flexShrink: 1,
+  },
+  messageCard: {
+    gap: spacing.xs,
+  },
+  messageCardWide: {
+    alignSelf: 'center',
+    maxWidth: 860,
+    width: '100%',
+  },
+  messageLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  messageText: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 26,
+    flexShrink: 1,
+  },
+  responseCard: {
+    gap: spacing.sm,
+  },
+  responseCardWide: {
+    alignSelf: 'center',
+    maxWidth: 860,
+    width: '100%',
+  },
+  responseHeader: {
+    gap: 4,
+    paddingBottom: spacing.sm,
+  },
+  responseHeaderPressed: {
+    opacity: 0.94,
+  },
+  responseEyebrow: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  responseTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 30,
+    flexShrink: 1,
+  },
+  responseCaption: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  responseTapHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  sequenceList: {
+    gap: spacing.sm,
+  },
+  sequenceSection: {
+    gap: spacing.xs,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(30, 36, 48, 0.08)',
+  },
+  sequenceSectionLast: {
+    paddingBottom: spacing.xs,
+  },
+  sequenceFramingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  sequenceFraming: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+  },
+  sequenceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  sequenceLabel: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 28,
+  },
+  sequenceHelper: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  sequenceText: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 28,
+    flexShrink: 1,
   },
   saveButton: {
     minHeight: 56,
@@ -359,21 +459,21 @@ export default function ResultScreen() {
   },
   saveButtonText: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    lineHeight: 24,
+    lineHeight: 22,
     textAlign: 'center',
   },
   saveHelperText: {
     color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
   },
   saveErrorText: {
     color: '#B45309',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
   },
   modalOverlay: {
@@ -383,11 +483,7 @@ export default function ResultScreen() {
     justifyContent: 'center',
   },
   modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.md,
-    ...shadow,
   },
   modalTitle: {
     color: colors.text,
@@ -401,8 +497,8 @@ export default function ResultScreen() {
     lineHeight: 24,
   },
   modalActions: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: spacing.xs,
+    marginTop: 4,
   },
   maybeLaterButton: {
     minHeight: 52,
@@ -418,9 +514,9 @@ export default function ResultScreen() {
   },
   maybeLaterButtonText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 20,
     textAlign: 'center',
   },
 });

@@ -29,9 +29,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.chipBorder,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardBackground,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
   selectedChip: {
     borderColor: colors.primary,
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textSecondary,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   selectedLabel: {

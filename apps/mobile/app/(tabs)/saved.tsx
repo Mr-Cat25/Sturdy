@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
+import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { Screen } from '../../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
+import { colors, radius, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { loadSavedScripts, type SavedScriptRow } from '../../src/lib/loadSavedScripts';
 
@@ -155,31 +156,31 @@ export default function SavedTabScreen() {
       </View>
 
       {isAuthLoading || isLoading ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.stateTitle}>Loading your saved scripts...</Text>
-        </View>
+        </Card>
       ) : null}
 
       {!isAuthLoading && !session ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.stateTitle}>Sign in to see your saved scripts.</Text>
-        </View>
+        </Card>
       ) : null}
 
       {!isLoading && Boolean(errorMessage) ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.errorText}>{errorMessage}</Text>
           <View style={styles.retryWrap}>
             <Button label="Try Again" onPress={handleRetry} />
           </View>
-        </View>
+        </Card>
       ) : null}
 
       {!isLoading && !errorMessage && session && savedScripts.length === 0 ? (
-        <View style={styles.stateCard}>
+        <Card style={styles.stateCard}>
           <Text style={styles.stateTitle}>No saved scripts yet.</Text>
           <Text style={styles.stateBody}>Save a script here when you want to come back to it.</Text>
-        </View>
+        </Card>
       ) : null}
 
       {!isLoading && !errorMessage && session ? (
@@ -189,19 +190,21 @@ export default function SavedTabScreen() {
               accessibilityRole="button"
               key={script.id}
               onPress={() => setSelectedScript(script)}
-              style={({ pressed }) => [styles.scriptCard, pressed ? styles.scriptCardPressed : null]}
+              style={({ pressed }) => [styles.scriptCardPressedWrap, pressed ? styles.scriptCardPressed : null]}
             >
-              <View style={styles.scriptMetaRow}>
-                <Text style={styles.scriptDate}>{formatSavedAt(script.created_at)}</Text>
-                {script.child_age !== null ? (
-                  <View style={styles.ageChip}>
-                    <Text style={styles.ageChipText}>Age {script.child_age}</Text>
-                  </View>
-                ) : null}
-              </View>
+              <Card style={styles.scriptCard}>
+                <View style={styles.scriptMetaRow}>
+                  <Text style={styles.scriptDate}>{formatSavedAt(script.created_at)}</Text>
+                  {script.child_age !== null ? (
+                    <View style={styles.ageChip}>
+                      <Text style={styles.ageChipText}>Age {script.child_age}</Text>
+                    </View>
+                  ) : null}
+                </View>
 
-              <Text style={styles.scriptTitle}>{script.situation_summary}</Text>
-              <Text style={styles.scriptPreview}>{buildPreview(script)}</Text>
+                <Text style={styles.scriptTitle}>{script.situation_summary}</Text>
+                <Text style={styles.scriptPreview}>{buildPreview(script)}</Text>
+              </Card>
             </Pressable>
           ))}
         </View>
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   header: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.xs,
   },
   headerWide: {
@@ -232,48 +235,43 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 35,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   stateCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    gap: spacing.sm,
   },
   stateTitle: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   stateBody: {
     color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
   },
   errorText: {
     color: '#B45309',
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 18,
   },
   retryWrap: {
     paddingTop: spacing.xs,
   },
   list: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   scriptCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
     gap: spacing.sm,
-    ...shadow,
+  },
+  scriptCardPressedWrap: {
+    borderRadius: radius.large,
   },
   scriptCardPressed: {
     opacity: 0.92,
@@ -304,14 +302,14 @@ const styles = StyleSheet.create({
   },
   scriptTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    lineHeight: 26,
+    lineHeight: 24,
   },
   scriptPreview: {
     color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
   },
   modalOverlay: {
     flex: 1,
@@ -320,36 +318,32 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    maxHeight: '86%',
-    padding: spacing.lg,
     gap: spacing.md,
-    ...shadow,
+    maxHeight: '86%',
   },
   modalTitle: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '800',
-    lineHeight: 30,
+    lineHeight: 28,
   },
   modalContent: {
-    gap: spacing.lg,
-    paddingBottom: spacing.sm,
+    gap: spacing.md,
+    paddingBottom: spacing.xs,
   },
   detailSection: {
     gap: spacing.xs,
   },
   detailLabel: {
     color: colors.textSecondary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    lineHeight: 18,
+    lineHeight: 16,
     textTransform: 'uppercase',
   },
   detailText: {
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

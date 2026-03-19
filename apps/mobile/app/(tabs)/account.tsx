@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
-import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
+import { Screen } from '../../src/components/ui/Screen';
+import { colors, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function AccountTabScreen() {
@@ -34,8 +34,7 @@ export default function AccountTabScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-      <StatusBar style="dark" />
+    <Screen>
       <View style={styles.content}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Back</Text>
@@ -46,7 +45,7 @@ export default function AccountTabScreen() {
           <Text style={styles.subtitle}>Manage your account and get back to the work you saved.</Text>
         </View>
 
-        <View style={styles.card}>
+        <Card style={styles.card}>
           <Text style={styles.label}>Signed in as</Text>
           <Text style={styles.emailText}>
             {session?.user.email ?? (isLoading ? 'Loading account...' : 'Sign in to manage your account.')}
@@ -63,22 +62,15 @@ export default function AccountTabScreen() {
             onPress={handleSignOut}
             disabled={isSigningOut || !session || isLoading}
           />
-        </View>
+        </Card>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   content: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -92,42 +84,38 @@ const styles = StyleSheet.create({
   },
   header: {
     marginTop: spacing.xs,
-    gap: spacing.xs,
+    gap: 4,
   },
   title: {
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 35,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    gap: spacing.sm,
   },
   label: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: 18,
     textTransform: 'uppercase',
   },
   emailText: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    lineHeight: 26,
+    lineHeight: 24,
   },
   errorText: {
     color: '#B45309',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
