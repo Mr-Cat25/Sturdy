@@ -105,7 +105,7 @@ export default function ResultScreen() {
             label="Try Another"
             onPress={() =>
               navigation.navigate({
-                pathname: '/now',
+                pathname: '/(tabs)',
                 params: {
                   reset: String(Date.now()),
                 },
@@ -133,7 +133,7 @@ export default function ResultScreen() {
                 label="Create Free Account"
                 onPress={() => {
                   setIsSaveModalVisible(false);
-                  navigation.push('/create-account');
+                  navigation.push('/auth/sign-up');
                 }}
               />
 

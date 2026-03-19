@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensio
 import { router } from 'expo-router';
 
 import { Button } from '../../src/components/ui/Button';
+import { GuestPrompt } from '../../src/components/GuestPrompt';
 import { Screen } from '../../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
@@ -161,9 +162,10 @@ export default function SavedTabScreen() {
       ) : null}
 
       {!isAuthLoading && !session ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>Sign in to view saved scripts.</Text>
-        </View>
+        <GuestPrompt
+          title="Saved scripts"
+          body="Create an account to save scripts and revisit them whenever you need."
+        />
       ) : null}
 
       {!isLoading && Boolean(errorMessage) ? (

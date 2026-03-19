@@ -10,3 +10,16 @@ export type ParentingScriptResponse = {
   connect: string;
   guide: string;
 };
+
+export type SavedScriptInput = {
+  situation_summary: string;
+  regulate: string;
+  connect: string;
+  guide: string;
+  childAge?: number | null;
+};
+
+export type SavedScript = SavedScriptInput & {
+  id: string;
+  createdAt: string;
+};
