@@ -1,12 +1,16 @@
 import type { ParentingScriptRequest, ParentingScriptResponse } from '../types/parentingScript';
 
-const PARENTING_SCRIPT_URL =
-  'https://shiny-xylophone-69665w5wgr6x3r55p-54321.app.github.dev/functions/v1/chat-parenting-assistant';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 
-const PARENTING_SCRIPT_AUTHORIZATION = 'Bearer dev-local';
+if (!SUPABASE_URL) {
+  throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL. Add it to your Expo environment configuration.');
+}
+
+const PARENTING_SCRIPT_URL = `${SUPABASE_URL}/functions/v1/chat-parenting-assistant`;
+
 const PARENTING_SCRIPT_HEADERS = {
   'Content-Type': 'application/json',
-  Authorization: PARENTING_SCRIPT_AUTHORIZATION,
+  Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'dev-local'}`,
 } as const;
 
 export async function getParentingScript(
