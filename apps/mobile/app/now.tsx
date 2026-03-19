@@ -140,7 +140,7 @@ export default function NowScreen() {
             <Button
               label={isLoading ? 'Getting Script...' : 'Get Script'}
               onPress={handleGetScript}
-              disabled={!situation.trim() || isLoading || childAge === null}
+              disabled={!childName || childAge === null || !situation.trim() || isLoading}
             />
           </View>
 
