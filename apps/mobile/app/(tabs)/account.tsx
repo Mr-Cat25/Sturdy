@@ -13,52 +13,70 @@ export default function AccountTabScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const handleSavedScriptsPress = () => {
-    router.push('/saved');
-  };
-
   const handleSignOut = async () => {
     setErrorMessage('');
     setIsSigningOut(true);
-
     try {
       await signOut();
       router.replace('/welcome');
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'We could not sign you out right now. Please try again.',
+        error instanceof Error ? error.message : 'We could not sign you out. Please try again.',
       );
     } finally {
       setIsSigningOut(false);
     }
   };
 
+  if (isLoading) {
+    return <View style={styles.safeArea} />;
+  }
+
+  if (!session) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <StatusBar style="dark" />
+        <View style={styles.content}>
+          <Text style={styles.title}>Account</Text>
+          <Text style={styles.subtitle}>
+            Sign in or create an account to save scripts and unlock the full app.
+          </Text>
+          <View style={styles.card}>
+            <Button label="Sign In" onPress={() => router.push('/auth/sign-in')} />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/auth/sign-up')}
+              style={({ pressed }) => [styles.createLink, pressed ? styles.createLinkPressed : null]}
+            >
+              <Text style={styles.createLinkText}>Don&apos;t have an account? Create one free</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.content}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </Pressable>
-
-        <View style={styles.header}>
-          <Text style={styles.title}>Account</Text>
-        </View>
+        <Text style={styles.title}>Account</Text>
 
         <View style={styles.card}>
           <Text style={styles.label}>Email</Text>
-          <Text style={styles.emailText}>
-            {session?.user.email ?? (isLoading ? 'Loading account...' : 'No signed-in account')}
-          </Text>
+          <Text style={styles.emailText}>{session.user.email}</Text>
 
-          {session ? <Button label="Saved Scripts" onPress={handleSavedScriptsPress} /> : null}
+          <Button
+            label="Saved Scripts"
+            onPress={() => router.push('/(tabs)/saved')}
+          />
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
           <Button
-            label={isSigningOut ? 'Signing Out...' : 'Sign Out'}
+            label={isSigningOut ? 'Signing Out…' : 'Sign Out'}
             onPress={handleSignOut}
-            disabled={isSigningOut || !session || isLoading}
+            disabled={isSigningOut}
           />
         </View>
       </View>
@@ -77,24 +95,16 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     gap: spacing.lg,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  header: {
-    marginTop: spacing.xs,
-  },
   title: {
     color: colors.text,
     fontSize: 30,
     fontWeight: '800',
     lineHeight: 36,
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    lineHeight: 24,
   },
   card: {
     backgroundColor: colors.surface,
@@ -105,9 +115,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: 18,
     textTransform: 'uppercase',
   },
   emailText: {
@@ -121,4 +131,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  createLink: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createLinkPressed: {
+    opacity: 0.7,
+  },
+  createLinkText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+  },
 });
+
