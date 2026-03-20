@@ -8,14 +8,7 @@ if (!SUPABASE_URL) {
 
 const PARENTING_SCRIPT_URL = `${SUPABASE_URL}/functions/v1/chat-parenting-assistant`;
 
-const PARENTING_SCRIPT_HEADERS = {
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'dev-local'}`,
-} as const;
-
-export async function getParentingScript(
-  input: ParentingScriptRequest,
-): Promise<ParentingScriptResponse> {
+async function generateParentingScript(input: ParentingScriptRequest): Promise<ParentingScriptResponse> {
   let response: Response;
 
   console.log('[STURDY_DEBUG] Request URL', PARENTING_SCRIPT_URL);
@@ -25,7 +18,9 @@ export async function getParentingScript(
   try {
     response = await fetch(PARENTING_SCRIPT_URL, {
       method: 'POST',
-      headers: PARENTING_SCRIPT_HEADERS,
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(input),
     });
   } catch (error) {
@@ -69,6 +64,16 @@ export async function getParentingScript(
   }
 
   return data;
+}
+
+export const api = {
+  parenting: {
+    generateGuest: generateParentingScript,
+  },
+} as const;
+
+export async function getParentingScript(input: ParentingScriptRequest): Promise<ParentingScriptResponse> {
+  return api.parenting.generateGuest(input);
 }
 
 function isParentingScriptResponse(value: unknown): value is ParentingScriptResponse {

@@ -8,13 +8,12 @@ import { Screen } from '../../src/components/ui/Screen';
 import { colors, radius, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
-export default function SignUpScreen() {
-  const { session, signUpWithEmail } = useAuth();
+export default function SignInScreen() {
+  const { session, signInWithEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [infoMessage, setInfoMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -33,18 +32,12 @@ export default function SignUpScreen() {
 
     setIsSubmitting(true);
     setErrorMessage('');
-    setInfoMessage('');
 
     try {
-      const { session: createdSession } = await signUpWithEmail(normalizedEmail, password);
-
-      if (createdSession) {
-        router.replace('/(tabs)');
-      } else {
-        setInfoMessage('Account created. Check your inbox if confirmation is required, then sign in.');
-      }
+      await signInWithEmail(normalizedEmail, password);
+      router.replace('/(tabs)');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "We couldn't create your account right now. Please try again.");
+      setErrorMessage(error instanceof Error ? error.message : 'Check your email and password and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -54,9 +47,9 @@ export default function SignUpScreen() {
     <Screen
       footer={
         <View style={styles.footerBlock}>
-          <Button label={isSubmitting ? 'Creating Account...' : 'Create Account'} onPress={handleSubmit} disabled={isSubmitting} />
-          <Pressable onPress={() => router.push('/auth/sign-in')} style={styles.footerLink}>
-            <Text style={styles.footerLinkText}>Already have an account? Sign In</Text>
+          <Button label={isSubmitting ? 'Signing In...' : 'Sign In'} onPress={handleSubmit} disabled={isSubmitting} />
+          <Pressable onPress={() => router.push('/auth/sign-up')} style={styles.footerLink}>
+            <Text style={styles.footerLinkText}>Don't have an account? Sign Up</Text>
           </Pressable>
         </View>
       }
@@ -69,8 +62,8 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Create your account</Text>
-          <Text style={styles.subtitle}>Save scripts, history, and child profiles in one place.</Text>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Sign in to your Sturdy account.</Text>
         </View>
 
         <Card style={styles.card}>
@@ -99,7 +92,7 @@ export default function SignUpScreen() {
             <View style={styles.passwordRow}>
               <TextInput
                 autoCapitalize="none"
-                autoComplete="new-password"
+                autoComplete="password"
                 autoCorrect={false}
                 onChangeText={(value) => {
                   setPassword(value);
@@ -107,7 +100,7 @@ export default function SignUpScreen() {
                     setErrorMessage('');
                   }
                 }}
-                placeholder="Create a password"
+                placeholder="Enter your password"
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry={!showPassword}
                 style={styles.passwordInput}
@@ -121,7 +114,6 @@ export default function SignUpScreen() {
           </View>
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
         </Card>
       </View>
     </Screen>
@@ -220,11 +212,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#F2B07A',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  infoText: {
-    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
   },

@@ -2,16 +2,16 @@ export const sturdyColors = {
   warmCoral: '#FF7A7A',
   softOrange: '#FFB36B',
   skyBlue: '#6FA8FF',
-  calmBlue: '#557FE6',
-  background: '#F6F8FC',
-  cardBackground: '#FFFFFF',
-  softSectionBackground: '#EEF2FA',
-  textPrimary: '#1C2433',
-  textSecondary: '#4F596B',
-  textMuted: '#8B95A7',
-  success: '#7BCFA6',
-  borderSoft: '#D7E0ED',
-  borderSubtle: '#E7EDF5',
+  calmBlue: '#4F8BFF',
+  background: '#09111E',
+  cardBackground: '#111B2E',
+  softSectionBackground: '#15213A',
+  textPrimary: '#F6FAFF',
+  textSecondary: '#A7B3C6',
+  textMuted: '#7F8CA3',
+  success: '#8FD3B4',
+  borderSoft: '#2A3853',
+  borderSubtle: '#1A2538',
   white: '#FFFFFF',
 } as const;
 
@@ -33,18 +33,18 @@ export const sturdyRadii = {
 
 export const sturdyShadows = {
   card: {
-    shadowColor: '#24304A',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.38,
     shadowRadius: 28,
-    elevation: 6,
+    elevation: 8,
   },
   soft: {
-    shadowColor: '#24304A',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.24,
     shadowRadius: 18,
-    elevation: 3,
+    elevation: 5,
   },
 } as const;
 

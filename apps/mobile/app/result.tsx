@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { router, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Image, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 
+import { Button } from '../src/components/ui/Button';
 import { Card } from '../src/components/ui/Card';
-import { Button as PrimaryButton } from '../src/components/ui/Button';
 import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, spacing } from '../src/components/ui/theme';
+import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
 import { useAuth } from '../src/context/AuthContext';
 import { useChildProfile } from '../src/context/ChildProfileContext';
 import { saveScript } from '../src/lib/saveScript';
 import type { ParentingScriptResponse } from '../src/types/parentingScript';
 
 type ResultParams = {
+  message?: string;
   situationSummary?: string;
   regulate?: string;
   connect?: string;
@@ -23,119 +24,48 @@ function getValue(value?: string | string[]) {
 }
 
 export default function ResultScreen() {
-  const navigation = useRouter();
   const params = useLocalSearchParams<ResultParams>();
-  const { width } = useWindowDimensions();
   const { session, isLoading } = useAuth();
   const { draft } = useChildProfile();
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
-  const [revealStep, setRevealStep] = useState(1);
-  const regulateOpacity = useRef(new Animated.Value(0)).current;
-  const connectOpacity = useRef(new Animated.Value(0)).current;
-  const guideOpacity = useRef(new Animated.Value(0)).current;
-  const isWide = width >= 700;
 
   const script: ParentingScriptResponse = {
     situation_summary:
-      getValue(params.situationSummary) || "We couldn't load the situation summary for this script.",
-    regulate: getValue(params.regulate) || "We couldn't load the regulation step for this script.",
-    connect: getValue(params.connect) || "We couldn't load the connection step for this script.",
-    guide: getValue(params.guide) || "We couldn't load the guidance step for this script.",
+      getValue(params.situationSummary) || 'We could not load the situation summary for this script.',
+    regulate: getValue(params.regulate) || 'We could not load the regulate step for this script.',
+    connect: getValue(params.connect) || 'We could not load the connect step for this script.',
+    guide: getValue(params.guide) || 'We could not load the guide step for this script.',
   };
+
+  const message = getValue(params.message) || script.situation_summary;
+  const childLabel = draft.name?.trim() ? `${draft.name.trim()}, age ${draft.childAge ?? 'unknown'}` : draft.childAge ? `Age ${draft.childAge}` : 'Child context not set';
+
+  const shareText = useMemo(
+    () =>
+      [
+        `Situation: ${script.situation_summary}`,
+        `Regulate: ${script.regulate}`,
+        `Connect: ${script.connect}`,
+        `Guide: ${script.guide}`,
+      ].join('\n\n'),
+    [script.connect, script.guide, script.regulate, script.situation_summary],
+  );
 
   useEffect(() => {
     setIsSaved(false);
     setIsSaving(false);
     setSaveErrorMessage('');
+    setIsSaveModalVisible(false);
   }, [script.connect, script.guide, script.regulate, script.situation_summary]);
 
-  useEffect(() => {
-    setRevealStep(1);
-    regulateOpacity.setValue(0);
-    connectOpacity.setValue(0);
-    guideOpacity.setValue(0);
-
-    Animated.timing(regulateOpacity, {
-      toValue: 1,
-      duration: 280,
-      useNativeDriver: true,
-    }).start();
-
-    const connectTimer = setTimeout(() => {
-      setRevealStep(2);
-      Animated.timing(connectOpacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
-    }, 520);
-
-    const guideTimer = setTimeout(() => {
-      setRevealStep(3);
-      Animated.timing(guideOpacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
-    }, 1040);
-
-    return () => {
-      clearTimeout(connectTimer);
-      clearTimeout(guideTimer);
-    };
-  }, [connectOpacity, guideOpacity, regulateOpacity, script.connect, script.guide, script.regulate, script.situation_summary]);
-
-  const sections = useMemo(
-    () => [
-      {
-        key: 'regulate',
-        framing: 'Start here',
-        label: 'Regulate',
-        helper: 'Set the tone first.',
-        body: script.regulate,
-        opacity: regulateOpacity,
-      },
-      {
-        key: 'connect',
-        framing: 'Then say',
-        label: 'Connect',
-        helper: 'Stay on their side.',
-        body: script.connect,
-        opacity: connectOpacity,
-      },
-      {
-        key: 'guide',
-        framing: 'Next',
-        label: 'Guide',
-        helper: 'Offer one simple next step.',
-        body: script.guide,
-        opacity: guideOpacity,
-      },
-    ],
-    [connectOpacity, guideOpacity, regulateOpacity, script.connect, script.guide, script.regulate],
-  );
-
-  const handleAdvanceReveal = () => {
-    if (revealStep === 1) {
-      setRevealStep(2);
-      Animated.timing(connectOpacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
-      return;
-    }
-
-    if (revealStep === 2) {
-      setRevealStep(3);
-      Animated.timing(guideOpacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
+  const handleShare = async () => {
+    try {
+      await Share.share({ message: shareText });
+    } catch (error) {
+      console.warn('Unable to share script.', error);
     }
   };
 
@@ -174,349 +104,340 @@ export default function ResultScreen() {
     <Screen
       footer={
         <View style={styles.footerActions}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleSaveScript}
-            disabled={isLoading || isSaving}
-            style={({ pressed }) => [
-              styles.saveButton,
-              isSaved ? styles.saveButtonSaved : null,
-              isLoading || isSaving ? styles.saveButtonDisabled : null,
-              pressed ? styles.saveButtonPressed : null,
-            ]}
-          >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save Script'}
-            </Text>
-          </Pressable>
-
-          {isSaved ? <Text style={styles.saveHelperText}>Script saved.</Text> : null}
-          {saveErrorMessage ? <Text style={styles.saveErrorText}>{saveErrorMessage}</Text> : null}
-
-          <PrimaryButton
+          <Button
             label="Try Another"
             onPress={() =>
-              navigation.navigate({
-                pathname: '/now',
-                params: {
-                  reset: String(Date.now()),
-                },
+              router.replace({
+                pathname: '/(tabs)',
+                params: { reset: String(Date.now()) },
               })
             }
           />
+
+          <View style={styles.inlineActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleSaveScript}
+              disabled={isLoading || isSaving || isSaved}
+              style={({ pressed }) => [styles.secondaryAction, pressed ? styles.secondaryActionPressed : null]}
+            >
+              <Text style={styles.secondaryActionText}>{isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save'}</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleShare}
+              style={({ pressed }) => [styles.secondaryAction, pressed ? styles.secondaryActionPressed : null]}
+            >
+              <Text style={styles.secondaryActionText}>Share</Text>
+            </Pressable>
+          </View>
+
+          {isSaved ? <Text style={styles.helperText}>Script saved.</Text> : null}
+          {saveErrorMessage ? <Text style={styles.errorText}>{saveErrorMessage}</Text> : null}
         </View>
       }
     >
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setIsSaveModalVisible(false)}
-        transparent
-        visible={isSaveModalVisible}
-      >
+      <Modal animationType="fade" onRequestClose={() => setIsSaveModalVisible(false)} transparent visible={isSaveModalVisible}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Save this script</Text>
-            <Text style={styles.modalBody}>
-              Create an account to save this script and come back to it later.
-            </Text>
+            <Text style={styles.modalBody}>Create an account to save this script and come back to it later.</Text>
 
             <View style={styles.modalActions}>
-              <PrimaryButton
+              <Button
                 label="Create Account"
                 onPress={() => {
                   setIsSaveModalVisible(false);
-                  navigation.push('/create-account');
+                  router.push('/auth/sign-up');
                 }}
               />
 
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setIsSaveModalVisible(false)}
-                style={({ pressed }) => [
-                  styles.maybeLaterButton,
-                  pressed ? styles.maybeLaterButtonPressed : null,
-                ]}
+                style={({ pressed }) => [styles.closeButton, pressed ? styles.closeButtonPressed : null]}
               >
-                <Text style={styles.maybeLaterButtonText}>Not now</Text>
+                <Text style={styles.closeButtonText}>Close</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+      <View style={styles.content}>
+        <View style={styles.brandRow}>
+          <View style={styles.logoBadge}>
+            <Image source={require('../assets/logo.png')} style={styles.logo} />
+          </View>
 
-      <View style={[styles.header, isWide ? styles.headerWide : null]}>
-        <Text style={styles.headerEyebrow}>Sturdy response</Text>
-        <Text style={styles.headerSubtext}>A calm first draft you can say in a real voice on a hard day.</Text>
-      </View>
-
-      <Card style={[styles.messageCard, isWide ? styles.messageCardWide : null]}>
-        <Text style={styles.messageLabel}>Your message</Text>
-        <Text style={styles.messageText}>{script.situation_summary}</Text>
-      </Card>
-
-      <Card style={[styles.responseCard, isWide ? styles.responseCardWide : null]}>
-        <Pressable onPress={handleAdvanceReveal} style={({ pressed }) => [styles.responseHeader, pressed ? styles.responseHeaderPressed : null]}>
-          <Text style={styles.responseEyebrow}>Sturdy response</Text>
-          <Text style={styles.responseTitle}>Follow this in order</Text>
-          <Text style={styles.responseCaption}>
-            It reveals one step at a time so you can read it like a real conversation.
-          </Text>
-          {revealStep < 3 ? <Text style={styles.responseTapHint}>Tap to bring the next step in.</Text> : null}
-        </Pressable>
-
-        <View style={styles.sequenceList}>
-          {sections.map((section, index) => (
-            <Animated.View
-              key={section.key}
-              style={[
-                styles.sequenceSection,
-                index === sections.length - 1 ? styles.sequenceSectionLast : null,
-                { opacity: section.opacity },
-              ]}
-            >
-              <View style={styles.sequenceFramingRow}>
-                <Text style={styles.sequenceFraming}>{section.framing}</Text>
-                {revealStep >= index + 1 ? <View style={styles.sequenceDot} /> : null}
-              </View>
-
-              <Text style={styles.sequenceLabel}>{section.label}</Text>
-              <Text style={styles.sequenceHelper}>{section.helper}</Text>
-              <Text style={styles.sequenceText}>{section.body}</Text>
-            </Animated.View>
-          ))}
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </Pressable>
         </View>
-      </Card>
+
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Your script</Text>
+          <Text style={styles.headerSubtitle}>Structured, calm language for the moment in front of you.</Text>
+          <View style={styles.contextPill}>
+            <Text style={styles.contextPillText}>{childLabel}</Text>
+          </View>
+        </View>
+
+        <Card style={styles.messageCard}>
+          <Text style={styles.cardLabel}>Your message</Text>
+          <Text style={styles.messageText}>{message}</Text>
+        </Card>
+
+        <Card style={styles.summaryCard}>
+          <Text style={styles.cardLabel}>Situation summary</Text>
+          <Text style={styles.summaryText}>{script.situation_summary}</Text>
+        </Card>
+
+        <Card style={styles.toneBanner}>
+          <Text style={styles.bannerLabel}>Tone</Text>
+          <Text style={styles.bannerText}>Calm, direct, and steady.</Text>
+        </Card>
+
+        <Card style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>REGULATE</Text>
+          <Text style={styles.sectionText}>{script.regulate}</Text>
+        </Card>
+
+        <Card style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>CONNECT</Text>
+          <Text style={styles.sectionText}>{script.connect}</Text>
+        </Card>
+
+        <Card style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>GUIDE</Text>
+          <Text style={styles.sectionText}>{script.guide}</Text>
+        </Card>
+
+        <Card style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>AVOID SAYING</Text>
+          <Text style={styles.sectionText}>Do not lecture, over-explain, or pile on too many directions at once.</Text>
+        </Card>
+
+        <Card style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>NOTES / FINAL GUIDANCE</Text>
+          <Text style={styles.sectionText}>Keep it short, then pause. Repeat the first line if the moment gets bigger.</Text>
+        </Card>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  content: {
+    gap: spacing.md,
+  },
   footerActions: {
-    gap: spacing.xs,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  header: {
-    gap: 4,
-    marginTop: spacing.xs,
-  },
-  headerWide: {
-    maxWidth: 860,
-  },
-  headerEyebrow: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  headerSubtext: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-    flexShrink: 1,
-  },
-  messageCard: {
-    gap: spacing.xs,
-  },
-  messageCardWide: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    width: '100%',
-  },
-  messageLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  messageText: {
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 26,
-    flexShrink: 1,
-  },
-  responseCard: {
     gap: spacing.sm,
   },
-  responseCardWide: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    width: '100%',
-  },
-  responseHeader: {
-    gap: 4,
-    paddingBottom: spacing.sm,
-  },
-  responseHeaderPressed: {
-    opacity: 0.94,
-  },
-  responseEyebrow: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  responseTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 30,
-    flexShrink: 1,
-  },
-  responseCaption: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  responseTapHint: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  sequenceList: {
-    gap: spacing.sm,
-  },
-  sequenceSection: {
-    gap: spacing.xs,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(30, 36, 48, 0.08)',
-  },
-  sequenceSectionLast: {
-    paddingBottom: spacing.xs,
-  },
-  sequenceFramingRow: {
+  inlineActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
   },
-  sequenceFraming: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-  },
-  sequenceDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  sequenceLabel: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 28,
-  },
-  sequenceHelper: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  sequenceText: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 28,
-    flexShrink: 1,
-  },
-  saveButton: {
-    minHeight: 56,
-    borderRadius: radius.medium,
-    borderColor: colors.border,
+  secondaryAction: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    backgroundColor: colors.surface,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
   },
-  saveButtonPressed: {
-    backgroundColor: colors.chipBackground,
+  secondaryActionPressed: {
+    opacity: 0.82,
   },
-  saveButtonSaved: {
-    backgroundColor: colors.successBackground,
-    borderColor: colors.primary,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: colors.text,
-    fontSize: 16,
+  secondaryActionText: {
+    color: colors.textSecondary,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 22,
-    textAlign: 'center',
+    lineHeight: 20,
   },
-  saveHelperText: {
+  helperText: {
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     textAlign: 'center',
   },
-  saveErrorText: {
-    color: '#B45309',
+  errorText: {
+    color: '#F2B07A',
     fontSize: 13,
     lineHeight: 18,
     textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(30, 36, 48, 0.28)',
-    paddingHorizontal: spacing.lg,
+    backgroundColor: 'rgba(6, 11, 20, 0.62)',
+    alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing.lg,
   },
   modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: radius.large,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
     gap: spacing.md,
   },
   modalTitle: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 30,
+    lineHeight: 28,
   },
   modalBody: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  modalActions: {
+    gap: spacing.sm,
+  },
+  closeButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonPressed: {
+    opacity: 0.84,
+  },
+  closeButtonText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    textDecorationLine: 'underline',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  logoBadge: {
+    minHeight: 52,
+    minWidth: 134,
+    borderRadius: radius.large,
+    backgroundColor: colors.softSectionBackground,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...shadow.soft,
+  },
+  logo: {
+    width: 120,
+    height: 36,
+    resizeMode: 'contain',
+  },
+  backButton: {
+    minHeight: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  header: {
+    gap: spacing.xs,
+  },
+  headerTitle: {
+    color: colors.text,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 40,
+  },
+  headerSubtitle: {
     color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 24,
   },
-  modalActions: {
-    gap: spacing.xs,
-    marginTop: 4,
-  },
-  maybeLaterButton: {
-    minHeight: 52,
-    alignItems: 'center',
+  contextPill: {
+    alignSelf: 'flex-start',
+    minHeight: 34,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.softSectionBackground,
     justifyContent: 'center',
-    borderRadius: radius.medium,
-    backgroundColor: colors.successBackground,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
   },
-  maybeLaterButtonPressed: {
-    backgroundColor: colors.chipBackground,
+  contextPillText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
   },
-  maybeLaterButtonText: {
+  messageCard: {
+    gap: spacing.sm,
+  },
+  summaryCard: {
+    gap: spacing.sm,
+  },
+  cardLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+  },
+  messageText: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 20,
-    textAlign: 'center',
+    fontSize: 16,
+    lineHeight: 26,
+  },
+  summaryText: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 26,
+  },
+  toneBanner: {
+    gap: spacing.xs,
+    backgroundColor: colors.softSectionBackground,
+    borderColor: colors.borderSoft,
+  },
+  bannerLabel: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+  },
+  bannerText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
+  sectionCard: {
+    gap: spacing.xs,
+  },
+  sectionLabel: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    lineHeight: 18,
+    textTransform: 'uppercase',
+  },
+  sectionText: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 26,
   },
 });

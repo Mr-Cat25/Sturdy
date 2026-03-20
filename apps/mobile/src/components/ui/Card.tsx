@@ -5,6 +5,8 @@ import { colors, radius, shadow, spacing } from './theme';
 
 type CardProps = PropsWithChildren<ViewProps>;
 
+const { soft: _soft, ...cardShadow } = shadow;
+
 export function Card({ children, style, ...props }: CardProps) {
   return (
     <View {...props} style={[styles.card, style]}>
@@ -21,6 +23,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.md,
-    ...shadow,
+    ...cardShadow,
   },
 });

@@ -1,104 +1,135 @@
-import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import { router, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 
-import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
+import { Card } from '../../src/components/ui/Card';
 import { Chip } from '../../src/components/ui/Chip';
-import { Input } from '../../src/components/ui/Input';
 import { Screen } from '../../src/components/ui/Screen';
-import { colors, radius, spacing } from '../../src/components/ui/theme';
+import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useChildProfile } from '../../src/context/ChildProfileContext';
-import { getParentingScript } from '../../src/lib/api';
+import { api } from '../../src/lib/api';
+import { getGuestChild, type GuestChildProfile } from '../../src/lib/mobileStorage';
+import { loadChildProfiles } from '../../src/lib/childProfiles';
 
-const quickSituationPrompts = [
-  'Bedtime meltdown',
-  'Leaving the park',
-  'Hitting sibling',
-  'Refusing homework',
-];
+const quickSituationPrompts = ['Bedtime meltdown', 'Leaving the park', 'Hitting sibling', 'Refusing homework'];
+
+type ResolvedChild = GuestChildProfile;
 
 export default function HomeTabScreen() {
-  const navigation = useRouter();
   const params = useLocalSearchParams<{ reset?: string }>();
-  const { width } = useWindowDimensions();
   const { session } = useAuth();
-  const { draft } = useChildProfile();
+  const { draft, setDraft } = useChildProfile();
   const [situation, setSituation] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const isWide = width >= 700;
+  const [guestChild, setGuestChildState] = useState<ResolvedChild | null>(null);
+  const [selectedChild, setSelectedChild] = useState<ResolvedChild | null>(null);
 
-  const childName = draft.name;
-  const childAge = draft.childAge;
   const resetToken = Array.isArray(params.reset) ? params.reset[0] : params.reset;
-  const scriptHelperText = !childName?.trim()
-    ? 'Finish child setup to unlock scripts.'
-    : childAge === null
-      ? 'Add an age to keep the script specific.'
-      : !situation.trim()
-        ? 'A few words about the moment is enough.'
-        : '';
 
-  useEffect(() => {
-    if (!resetToken) {
-      return;
+  const activeChild = useMemo(() => {
+    if (session) {
+      if (selectedChild) {
+        return selectedChild;
+      }
+
+      if (draft.childAge !== null) {
+        return { name: draft.name ?? '', childAge: draft.childAge };
+      }
+
+      return null;
     }
 
-    setSituation('');
-    setErrorMessage('');
+    return guestChild;
+  }, [draft.childAge, draft.name, guestChild, selectedChild, session]);
+
+  const childName = activeChild?.name?.trim() || 'Child';
+  const childAge = activeChild?.childAge ?? draft.childAge ?? 6;
+  const canGenerate = situation.trim().length > 0 && !isLoading;
+
+  useEffect(() => {
+    if (resetToken) {
+      setSituation('');
+      setErrorMessage('');
+    }
   }, [resetToken]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateChild = async () => {
+      try {
+        if (session) {
+          const profiles = await loadChildProfiles();
+          const firstProfile = profiles[0];
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (firstProfile) {
+            const resolved = {
+              name: firstProfile.name ?? '',
+              childAge: firstProfile.child_age,
+            } satisfies ResolvedChild;
+
+            setSelectedChild(resolved);
+            setDraft({ name: firstProfile.name ?? undefined, childAge: firstProfile.child_age });
+            return;
+          }
+
+          if (draft.childAge !== null) {
+            setSelectedChild({ name: draft.name ?? '', childAge: draft.childAge });
+          }
+
+          return;
+        }
+
+        const storedGuestChild = await getGuestChild();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (storedGuestChild) {
+          setGuestChildState(storedGuestChild);
+        }
+      } catch (error) {
+        console.warn('Unable to hydrate child context.', error);
+      }
+    };
+
+    hydrateChild();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [draft.childAge, draft.name, session, setDraft]);
 
   const handleGetScript = async () => {
     const message = situation.trim();
 
-    console.log('[STURDY_DEBUG] Get Script pressed', {
-      hasMessage: Boolean(message),
-      childAge,
-    });
-
-    if (!childName?.trim()) {
-      setErrorMessage('Finish child setup to unlock scripts.');
-      return;
-    }
-
-    if (childAge === null) {
-      setErrorMessage('Add an age to keep the script specific.');
-      return;
-    }
-
     if (!message) {
-      setErrorMessage('Add a few words about the moment to continue.');
+      setErrorMessage('Add a situation to continue.');
       return;
     }
-
-    const payload = {
-      childName,
-      childAge,
-      message,
-    };
-
-    console.log('[STURDY_DEBUG] Sending payload', payload);
 
     setErrorMessage('');
     setIsLoading(true);
 
     try {
-      const script = await getParentingScript(payload);
+      const script = await api.parenting.generateGuest({
+        childName,
+        childAge,
+        message,
+      });
 
-      navigation.push({
+      router.push({
         pathname: '/result',
         params: {
+          message,
           situationSummary: script.situation_summary,
           regulate: script.regulate,
           connect: script.connect,
@@ -106,15 +137,7 @@ export default function HomeTabScreen() {
         },
       });
     } catch (error) {
-      console.log('[STURDY_DEBUG] Get Script failed', {
-        error:
-          error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
-      });
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "We couldn't get a script right now. Please try again.",
-      );
+      setErrorMessage(error instanceof Error ? error.message : "We couldn't get a script right now. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -122,153 +145,184 @@ export default function HomeTabScreen() {
 
   return (
     <Screen scrollable={false}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? spacing.md : 0}
-        style={styles.keyboardContent}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          contentInsetAdjustmentBehavior="always"
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <View style={styles.brandRow}>
+          <View style={styles.logoBadge}>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} />
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/children')}
+            style={({ pressed }) => [styles.agePill, pressed ? styles.agePillPressed : null]}
+          >
+            <Text style={styles.agePillText}>Age {childAge}</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.header}>
+          <Text style={styles.title}>What should I say right now?</Text>
+          <Text style={styles.subtitle}>Describe the moment and get calm words you can say right away.</Text>
+        </View>
+
+        <Card style={styles.formCard}>
+          <Text style={styles.fieldLabel}>Situation</Text>
+          <TextInput
+            multiline
+            onChangeText={(value) => {
+              setSituation(value);
+
+              if (errorMessage) {
+                setErrorMessage('');
+              }
+            }}
+            placeholder="My child is screaming because we have to leave the park."
+            placeholderTextColor={colors.textMuted}
+            style={styles.input}
+            value={situation}
+          />
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        </Card>
+
+        <View style={styles.chipSection}>
+          <Text style={styles.chipSectionTitle}>Quick prompts</Text>
+          <View style={styles.chipRow}>
+            {quickSituationPrompts.map((prompt) => (
+              <Chip
+                key={prompt}
+                label={prompt}
+                onPress={() => {
+                  setSituation(prompt);
+
+                  if (errorMessage) {
+                    setErrorMessage('');
+                  }
+                }}
+                selected={situation.trim() === prompt}
+              />
+            ))}
+          </View>
+        </View>
+
+        <Button label={isLoading ? 'Getting Script...' : 'Get Script'} onPress={handleGetScript} disabled={!canGenerate} />
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push(session ? '/account' : '/auth/sign-in')}
+          style={({ pressed }) => [styles.authLink, pressed ? styles.authLinkPressed : null]}
         >
-          <View style={[styles.header, isWide ? styles.headerWide : null]}>
-            <Text style={styles.title}>What&apos;s happening right now?</Text>
-            <Text style={styles.subtitle}>
-              Describe the moment and get calm words you can say right away.
-            </Text>
-          </View>
-
-          <Card style={[styles.formCard, isWide ? styles.formCardWide : null]}>
-            <Input
-              label="Describe the moment"
-              multiline
-              onChangeText={(value) => {
-                setSituation(value);
-
-                if (errorMessage) {
-                  setErrorMessage('');
-                }
-              }}
-              placeholder="My child is screaming because we have to leave the park."
-              value={situation}
-              hint="A few words is enough. What happened, where are you, and what do you need to say?"
-            />
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          </Card>
-
-          <View style={styles.buttonWrap}>
-            <Button
-              label={isLoading ? 'Getting Script...' : 'Get Script'}
-              onPress={handleGetScript}
-              disabled={!childName?.trim() || childAge === null || !situation.trim() || isLoading}
-            />
-            {scriptHelperText ? <Text style={styles.buttonHint}>{scriptHelperText}</Text> : null}
-          </View>
-
-          <View style={styles.chipSection}>
-            <Text style={styles.chipSectionTitle}>Quick prompts</Text>
-            <View style={styles.chipRow}>
-              {quickSituationPrompts.map((prompt) => (
-                <Chip
-                  key={prompt}
-                  label={prompt}
-                  onPress={() => {
-                    setSituation(prompt);
-                    if (errorMessage) {
-                      setErrorMessage('');
-                    }
-                  }}
-                  selected={situation.trim() === prompt}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.secondaryLinksRow}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(session ? '/account' : '/create-account')}
-              style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
-            >
-              <Text style={styles.secondaryLinkText}>{session ? 'Account' : 'Sign In'}</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/saved')}
-              style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
-            >
-              <Text style={styles.secondaryLinkText}>Saved</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <Text style={styles.authLinkText}>{session ? 'Account' : 'Sign In'}</Text>
+        </Pressable>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardContent: {
-    flex: 1,
-  },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+    gap: spacing.lg,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
+  logoBadge: {
+    minHeight: 52,
+    minWidth: 134,
+    borderRadius: radius.large,
+    backgroundColor: colors.softSectionBackground,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...shadow.soft,
   },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
+  logo: {
+    width: 120,
+    height: 36,
+    resizeMode: 'contain',
+  },
+  agePill: {
+    minHeight: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBackground,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+  },
+  agePillPressed: {
+    opacity: 0.84,
+  },
+  agePillText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
   },
   header: {
     gap: spacing.xs,
-    marginTop: spacing.md,
-  },
-  headerWide: {
-    maxWidth: 760,
   },
   title: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '800',
-    lineHeight: 35,
+    lineHeight: 40,
     flexShrink: 1,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-    flexShrink: 1,
+    fontSize: 16,
+    lineHeight: 24,
   },
   formCard: {
     gap: spacing.sm,
   },
-  formCardWide: {
-    maxWidth: 760,
-    width: '100%',
-    alignSelf: 'center',
+  fieldLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
-  buttonWrap: {
-    paddingTop: 4,
-    gap: spacing.xs,
+  input: {
+    minHeight: 180,
+    borderRadius: radius.large,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardBackground,
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 24,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    textAlignVertical: 'top',
+  },
+  errorText: {
+    color: '#F2B07A',
+    fontSize: 13,
+    lineHeight: 18,
   },
   chipSection: {
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   chipSectionTitle: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   chipRow: {
@@ -276,38 +330,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  secondaryLinksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    paddingTop: 4,
+  authLink: {
+    alignSelf: 'center',
+    paddingVertical: spacing.xs,
   },
-  secondaryLink: {
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.successBackground,
-    justifyContent: 'center',
+  authLinkPressed: {
+    opacity: 0.84,
   },
-  secondaryLinkPressed: {
-    opacity: 0.82,
-  },
-  secondaryLinkText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  errorText: {
-    color: '#B45309',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  buttonHint: {
+  authLinkText: {
     color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    textDecorationLine: 'underline',
   },
 });
