@@ -73,11 +73,11 @@ export default function NowTabScreen() {
   const childAge = guestChild?.childAge ?? null;
   const childName = guestChild?.name;
   const hasText = situation.trim().length > 0;
-  const canGenerate = hasText && childAge !== null;
+  const canGenerate = hasText;
 
   const handleGetScript = async () => {
     const message = situation.trim();
-    if (!message || childAge === null) return;
+    if (!message) return;
 
     setErrorMessage('');
     setIsLoading(true);
@@ -85,7 +85,7 @@ export default function NowTabScreen() {
     try {
       const script = await getParentingScript({
         childName: childName ?? 'Child',
-        childAge,
+        childAge: childAge ?? 6,
         message,
       });
 
@@ -164,9 +164,6 @@ export default function NowTabScreen() {
 
           {/* CTA */}
           <View style={styles.buttonWrap}>
-            {childAge === null && hasText ? (
-              <Text style={styles.noAgeHint}>Tap &quot;Set Age&quot; to add your child&apos;s age.</Text>
-            ) : null}
             <Button
               label={isLoading ? 'Getting Script…' : 'Get Script'}
               onPress={handleGetScript}
@@ -264,12 +261,6 @@ const styles = StyleSheet.create({
   },
   buttonWrap: {
     gap: spacing.xs,
-  },
-  noAgeHint: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
   },
   chipSection: {
     gap: spacing.sm,

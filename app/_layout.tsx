@@ -1,6 +1,9 @@
-// Placeholder for layout component
-const Layout = () => {
-  return <div>Layout Placeholder</div>;
-};
+import { useEffect } from 'react';
+import { router } from 'expo-router';
 
-export default Layout;
+export default function RootLayout() {
+  useEffect(() => {
+    router.replace('/');
+  }, []);
+  return null;
+}

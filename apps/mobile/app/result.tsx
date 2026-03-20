@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Button as PrimaryButton } from '../src/components/ui/Button';
@@ -78,6 +78,20 @@ export default function ResultScreen() {
     }
   };
 
+  const handleShare = async () => {
+    const text = [
+      `Regulate: ${script.regulate}`,
+      `Connect: ${script.connect}`,
+      `Guide: ${script.guide}`,
+    ].join('\n\n');
+
+    try {
+      await Share.share({ message: text });
+    } catch (error) {
+      console.warn('[STURDY] Share failed', error);
+    }
+  };
+
   return (
     <Screen
       footer={
@@ -112,6 +126,14 @@ export default function ResultScreen() {
               })
             }
           />
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleShare}
+            style={({ pressed }) => [styles.shareButton, pressed ? styles.shareButtonPressed : null]}
+          >
+            <Text style={styles.shareButtonText}>Share</Text>
+          </Pressable>
         </View>
       }
     >
@@ -362,6 +384,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
+  },
+  shareButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonPressed: {
+    opacity: 0.7,
+  },
+  shareButtonText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    textDecorationLine: 'underline',
   },
   modalOverlay: {
     flex: 1,
