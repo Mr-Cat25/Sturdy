@@ -1,286 +1,312 @@
-import { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
-import { router, useLocalSearchParams, useRouter } from 'expo-router';
+import { router } from 'expo-router';
 
 import { Button } from '../../src/components/ui/Button';
 import { Chip } from '../../src/components/ui/Chip';
-import { Input } from '../../src/components/ui/Input';
 import { Screen } from '../../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useChildProfile } from '../../src/context/ChildProfileContext';
-import { getParentingScript } from '../../src/lib/api';
 
-const quickSituationPrompts = [
-  'Bedtime meltdown',
+const FREE_SUPPORT_REMAINING = 3;
+const FREE_SUPPORT_TOTAL = 5;
+
+const quickSituations = [
+  'Bedtime',
   'Leaving the park',
-  'Hitting sibling',
-  'Refusing homework',
+  'Sibling conflict',
+  'Public meltdown',
 ];
 
-export default function HomeTabScreen() {
-  const navigation = useRouter();
-  const params = useLocalSearchParams<{ reset?: string }>();
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) {
+    return 'Good morning';
+  }
+
+  if (hour < 18) {
+    return 'Good afternoon';
+  }
+
+  return 'Good evening';
+}
+
+export default function DashboardTabScreen() {
   const { width } = useWindowDimensions();
   const { session } = useAuth();
   const { draft } = useChildProfile();
-  const [situation, setSituation] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const isWide = width >= 700;
 
-  const childName = draft.name;
+  const childName = draft.name?.trim();
   const childAge = draft.childAge;
-  const resetToken = Array.isArray(params.reset) ? params.reset[0] : params.reset;
+  const greeting = getTimeGreeting();
+  const hasActiveChild = childAge !== null;
+  const greetingTitle = hasActiveChild && childName ? `${greeting}, ${childName}'s parent` : greeting;
+  const greetingSubtitle = hasActiveChild ? 'How can Sturdy support you today?' : 'Ready for support?';
+  const childSummaryTitle = hasActiveChild
+    ? childName
+      ? `${childName} · Age ${childAge}`
+      : `Your child · Age ${childAge}`
+    : 'No child added yet';
+  const childSummaryBody = hasActiveChild
+    ? 'Active child. Manage this profile and your library in Profile.'
+    : 'Add a child so Sturdy can tailor support to the right age.';
 
-  useEffect(() => {
-    if (!resetToken) {
-      return;
-    }
-
-    setSituation('');
-    setErrorMessage('');
-  }, [resetToken]);
-
-  const handleGetScript = async () => {
-    const message = situation.trim();
-
-    console.log('[STURDY_DEBUG] Get Script pressed', {
-      hasMessage: Boolean(message),
-      childAge,
-    });
-
-    if (!message || childAge === null || !childName) {
-      return;
-    }
-
-    const payload = {
-      childName,
-      childAge,
-      message,
-    };
-
-    console.log('[STURDY_DEBUG] Sending payload', payload);
-
-    setErrorMessage('');
-    setIsLoading(true);
-
-    try {
-      const script = await getParentingScript(payload);
-
-      navigation.push({
-        pathname: '/result',
-        params: {
-          situationSummary: script.situation_summary,
-          regulate: script.regulate,
-          connect: script.connect,
-          guide: script.guide,
-        },
-      });
-    } catch (error) {
-      console.log('[STURDY_DEBUG] Get Script failed', {
-        error:
-          error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
-      });
-      setErrorMessage('We could not get a script right now. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleStartSos = () => {
+    router.push('/now');
   };
 
   return (
-    <Screen scrollable={false}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? spacing.md : 0}
-        style={styles.keyboardContent}
+    <Screen>
+      <View style={[styles.header, isWide ? styles.headerWide : null]}>
+        <Text style={styles.greeting}>{greetingTitle}</Text>
+        <Text style={styles.supportLine}>{greetingSubtitle}</Text>
+      </View>
+
+      <View style={[styles.topRow, isWide ? styles.topRowWide : null]}>
+        <View style={[styles.supportCard, styles.topCard, isWide ? styles.supportCardWide : null]}>
+          <Text style={styles.cardEyebrow}>Included support</Text>
+          <Text style={styles.cardTitle}>Your free support</Text>
+          <Text style={styles.cardBody}>
+            {FREE_SUPPORT_REMAINING} of {FREE_SUPPORT_TOTAL} scripts remaining
+          </Text>
+        </View>
+
+        <View style={[styles.childCard, styles.topCard, isWide ? styles.childCardWide : null]}>
+          <Text style={styles.cardEyebrow}>{hasActiveChild ? 'Active child' : 'Profile setup'}</Text>
+          <Text style={styles.cardTitle}>{childSummaryTitle}</Text>
+          <Text style={styles.cardBody}>{childSummaryBody}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              hasActiveChild
+                ? router.push('/(tabs)/profile')
+                : router.push(session ? '/child/new' : '/create-account')
+            }
+            style={({ pressed }) => [styles.inlineAction, pressed ? styles.inlineActionPressed : null]}
+          >
+            <Text style={styles.inlineActionText}>{hasActiveChild ? 'Manage in Profile' : 'Add child'}</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={handleStartSos}
+        style={({ pressed }) => [styles.sosCard, pressed ? styles.sosCardPressed : null]}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          contentInsetAdjustmentBehavior="always"
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <Text style={styles.sosEyebrow}>Immediate support</Text>
+        <Text style={styles.sosTitle}>SOS</Text>
+        <Text style={styles.sosSubtitle}>For hard moments right now</Text>
+        <Text style={styles.sosBody}>Get calm, practical words you can use right away.</Text>
+        <View style={styles.sosButtonWrap}>
+          <Button label="Start SOS" onPress={handleStartSos} style={styles.sosButton} />
+        </View>
+      </Pressable>
+
+      <View style={styles.quickSection}>
+        <Text style={styles.quickSectionTitle}>Quick situations</Text>
+        <View style={styles.quickChips}>
+          {quickSituations.map((situation) => (
+            <Chip
+              key={situation}
+              label={situation}
+              onPress={handleStartSos}
+              selected={false}
+            />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.previewCard}>
+        <Text style={styles.previewTitle}>Profile keeps your child context, saved scripts, and history together.</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/(tabs)/profile')}
+          style={({ pressed }) => [styles.previewLink, pressed ? styles.inlineActionPressed : null]}
         >
-          <View style={[styles.header, isWide ? styles.headerWide : null]}>
-            <Text style={styles.title}>What&apos;s happening right now?</Text>
-            <Text style={styles.subtitle}>
-              Describe the moment and get calm words to say.
-            </Text>
-          </View>
-
-          <View style={[styles.formCard, isWide ? styles.formCardWide : null]}>
-            <Input
-              label="Describe the moment"
-              multiline
-              onChangeText={(value) => {
-                setSituation(value);
-
-                if (errorMessage) {
-                  setErrorMessage('');
-                }
-              }}
-              placeholder="My child is screaming because we have to leave the park."
-              value={situation}
-              hint="You&apos;re not writing a report. A simple snapshot is enough."
-            />
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          </View>
-
-          <View style={styles.buttonWrap}>
-            <Button
-              label={isLoading ? 'Getting Script...' : 'Get Script'}
-              onPress={handleGetScript}
-              disabled={!childName || childAge === null || !situation.trim() || isLoading}
-            />
-          </View>
-
-          <View style={styles.chipSection}>
-            <Text style={styles.chipSectionTitle}>Quick prompts</Text>
-            <View style={styles.chipRow}>
-              {quickSituationPrompts.map((prompt) => (
-                <Chip
-                  key={prompt}
-                  label={prompt}
-                  onPress={() => {
-                    setSituation(prompt);
-                    if (errorMessage) {
-                      setErrorMessage('');
-                    }
-                  }}
-                  selected={situation.trim() === prompt}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.secondaryLinksRow}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(session ? '/account' : '/create-account')}
-              style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
-            >
-              <Text style={styles.secondaryLinkText}>{session ? 'Account' : 'Sign In'}</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/saved')}
-              style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
-            >
-              <Text style={styles.secondaryLinkText}>Saved Scripts</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <Text style={styles.previewLinkText}>Open Profile</Text>
+        </Pressable>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardContent: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
-    gap: spacing.lg,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
   header: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   headerWide: {
     maxWidth: 760,
   },
-  title: {
+  greeting: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 38,
     flexShrink: 1,
   },
-  subtitle: {
+  supportLine: {
     color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 24,
     flexShrink: 1,
   },
-  formCard: {
+  topRow: {
+    gap: spacing.md,
+  },
+  topRowWide: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  topCard: {
+    flex: 1,
+  },
+  supportCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.large,
     padding: spacing.lg,
-    gap: spacing.md,
+    gap: spacing.xs,
     ...shadow,
   },
-  formCardWide: {
-    maxWidth: 760,
-    width: '100%',
-    alignSelf: 'center',
+  supportCardWide: {
+    minHeight: 150,
   },
-  buttonWrap: {
-    paddingTop: spacing.xs,
+  childCard: {
+    backgroundColor: '#FFF9F1',
+    borderRadius: radius.large,
+    padding: spacing.lg,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: '#F1E0BF',
+    ...shadow,
   },
-  chipSection: {
-    gap: spacing.sm,
+  childCardWide: {
+    minHeight: 150,
   },
-  chipSectionTitle: {
+  cardEyebrow: {
     color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 16,
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  secondaryLinksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  secondaryLink: {
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.successBackground,
-    justifyContent: 'center',
-  },
-  secondaryLinkPressed: {
-    opacity: 0.82,
-  },
-  secondaryLinkText: {
+  cardTitle: {
     color: colors.text,
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 26,
+  },
+  cardBody: {
+    color: colors.textSecondary,
     fontSize: 15,
-    fontWeight: '600',
     lineHeight: 22,
   },
-  errorText: {
-    color: '#B45309',
+  inlineAction: {
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  inlineActionPressed: {
+    opacity: 0.82,
+  },
+  inlineActionText: {
+    color: colors.primary,
     fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  sosCard: {
+    backgroundColor: '#FFF2E1',
+    borderRadius: 32,
+    padding: spacing.xl,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#F1D4A7',
+    ...shadow,
+  },
+  sosCardPressed: {
+    opacity: 0.96,
+  },
+  sosEyebrow: {
+    color: '#8A5A14',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  sosTitle: {
+    color: colors.text,
+    fontSize: 40,
+    fontWeight: '800',
+    lineHeight: 44,
+  },
+  sosSubtitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
+  },
+  sosBody: {
+    color: colors.textSecondary,
+    fontSize: 17,
+    lineHeight: 25,
+    maxWidth: 420,
+  },
+  sosButtonWrap: {
+    paddingTop: spacing.sm,
+  },
+  sosButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E58A2F',
+  },
+  quickSection: {
+    gap: spacing.sm,
+  },
+  quickSectionTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
+  quickChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  previewCard: {
+    backgroundColor: '#F2F5FB',
+    borderRadius: radius.large,
+    padding: spacing.lg,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  previewTitle: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  previewLink: {
+    alignSelf: 'flex-start',
+    minHeight: 34,
+    justifyContent: 'center',
+  },
+  previewLinkText: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '700',
     lineHeight: 22,
   },
 });

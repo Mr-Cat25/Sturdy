@@ -39,7 +39,7 @@ export default function SignUpScreen() {
     try {
       const { session } = await signUpWithEmail(normalizedEmail, password);
       if (session) {
-        router.replace('/(tabs)');
+        router.replace('/');
       } else {
         setInfoMessage('Account created! Check your email to confirm, then sign in.');
       }

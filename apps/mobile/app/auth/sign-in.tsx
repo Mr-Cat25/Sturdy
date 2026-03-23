@@ -27,7 +27,7 @@ export default function SignInScreen() {
 
     try {
       await signInWithEmail(normalizedEmail, password);
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Sign in failed. Please try again.',

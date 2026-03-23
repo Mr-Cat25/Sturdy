@@ -61,15 +61,57 @@ export default function AccountTabScreen() {
       <StatusBar style="dark" />
       <View style={styles.content}>
         <Text style={styles.title}>Account</Text>
+        <Text style={styles.subtitle}>Manage your account, legal details, and sign-out in one place.</Text>
 
         <View style={styles.card}>
           <Text style={styles.label}>Email</Text>
           <Text style={styles.emailText}>{session.user.email}</Text>
+        </View>
 
-          <Button
-            label="Saved Scripts"
-            onPress={() => router.push('/(tabs)/saved')}
-          />
+        <View style={styles.card}>
+          <Text style={styles.label}>Plan</Text>
+          <Text style={styles.sectionTitle}>Free support</Text>
+          <Text style={styles.supportingText}>Your current access is active in the mobile app.</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.label}>Legal</Text>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/legal/terms-of-service')}
+            style={({ pressed }) => [styles.linkRow, pressed ? styles.linkRowPressed : null]}
+          >
+            <Text style={styles.linkText}>Terms of Service</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/legal/privacy-policy')}
+            style={({ pressed }) => [styles.linkRow, pressed ? styles.linkRowPressed : null]}
+          >
+            <Text style={styles.linkText}>Privacy Policy</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/legal/medical-safety')}
+            style={({ pressed }) => [styles.linkRow, pressed ? styles.linkRowPressed : null]}
+          >
+            <Text style={styles.linkText}>Medical Safety</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/legal/ai-limitations')}
+            style={({ pressed }) => [styles.linkRow, pressed ? styles.linkRowPressed : null]}
+          >
+            <Text style={styles.linkText}>AI Limitations</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.label}>Session</Text>
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
@@ -125,6 +167,30 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     lineHeight: 26,
+  },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 26,
+  },
+  supportingText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  linkRow: {
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  linkRowPressed: {
+    opacity: 0.72,
+  },
+  linkText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 24,
   },
   errorText: {
     color: '#B45309',

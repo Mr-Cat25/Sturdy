@@ -1,4 +1,4 @@
-# Sturdy Dashboard Spec v2
+# Sturdy Dashboard Spec v2.1
 
 ## Purpose
 The Dashboard is Sturdy’s main landing surface after onboarding and sign-in. It must do two jobs at once:
@@ -55,7 +55,7 @@ It should **not** feel:
 
 ---
 
-## New Top-Level Tab Structure
+## Top-Level Tab Structure
 Use 3 tabs:
 
 - Dashboard
@@ -80,8 +80,9 @@ Top to bottom:
 2. Free support / script allowance card
 3. Active child summary or Add child state
 4. SOS hero card
-5. Quick situations
-6. Optional small continuity preview
+5. Optional small continuity preview
+
+Remove broad preset scenario chips from Dashboard.
 
 This order is intentional.  
 The top half of the screen should build trust and drive action.
@@ -105,13 +106,13 @@ Fallback if no active child:
 - Ready for support?
 
 ### Supporting line
-Use a short line under the greeting:
+Use one short line under the greeting:
 
 - How can Sturdy support you today?
 
-or
+If there is no active child, the support line can remain:
 
-- Calm, practical support for hard moments.
+- Ready for support?
 
 ### Design notes
 - Large, warm heading
@@ -168,7 +169,7 @@ Show:
 Show:
 
 - No child added yet
-- helper: Add a child so Sturdy can tailor support to the right age.
+- helper: Add your child so Sturdy can tailor support to them and their age.
 - CTA: Add child
 
 ### Why it matters
@@ -193,7 +194,7 @@ SOS
 For hard moments right now
 
 **Body**  
-Get calm, practical words you can use right away.
+Describe what’s happening and get calm, practical words you can use right away.
 
 **Primary CTA**  
 Start SOS
@@ -214,37 +215,7 @@ Tapping the card or CTA should go straight into the SOS / hard-moment flow.
 
 ---
 
-## Section 5 — Quick Situations
-### Purpose
-Reduce thinking and help parents start fast.
-
-### Suggested chips
-- Bedtime
-- Leaving the park
-- Sibling conflict
-- Public meltdown
-
-Optional later additions:
-- Morning rush
-- Homework refusal
-- Screen time battle
-
-### Why it matters
-In stressful moments, typing from scratch is harder.  
-Quick chips reduce friction and make the app feel practical.
-
-### Design notes
-- Short row or wrapped chip layout
-- Clear, large tap targets
-- Calm styling, not noisy
-
-### UX notes
-Tapping a chip should route into SOS with the situation prefilled later.  
-For now, it can route into the SOS flow entry.
-
----
-
-## Section 6 — Optional Continuity Preview
+## Section 5 — Optional Continuity Preview
 ### Purpose
 Show that Sturdy is more than one-time help.
 
@@ -253,9 +224,9 @@ Keep this small for now.
 Only one small preview area should appear below the main action zone.
 
 Possible content:
-- 1–2 recent supports
-- or a small “For Olivia” support preview
-- or a light “Saved support in Profile” teaser
+- Saved support lives in Profile
+- Past moments stay organized by child
+- Reopen what worked before
 
 ### Why it matters
 This helps skeptical parents see that the product has depth and continuity.
@@ -277,7 +248,6 @@ This helps skeptical parents see that the product has depth and continuity.
 
 ### Third
 - active child / add child state
-- quick situations
 
 ### Fourth
 - continuity preview
@@ -311,7 +281,7 @@ Free support is visible, and continuity hints suggest deeper value beyond one sc
 Will this help in a real hard moment?
 
 **Answer through design:**  
-Quick situations and SOS framing make the app feel practical, not theoretical.
+The SOS flow is direct and asks for the parent’s real description, not vague presets.
 
 ---
 
@@ -335,17 +305,14 @@ Manage in Profile
 
 ### Empty child state
 No child added yet  
-Add a child so Sturdy can tailor support to the right age.  
+Add your child so Sturdy can tailor support to them and their age.  
 Add child
 
 ### SOS hero
 SOS  
 For hard moments right now  
-Get calm, practical words you can use right away.  
+Describe what’s happening and get calm, practical words you can use right away.  
 Start SOS
-
-### Quick situations title
-Quick situations
 
 ---
 
@@ -358,6 +325,7 @@ Quick situations
 - No long explanations
 - Child personalization must be visible
 - Free trial must feel supportive, not punishing
+- Do not use broad preset scenario chips as a primary input path
 
 ---
 
@@ -369,7 +337,7 @@ Do not include:
 - script monitor
 - legal links
 - dense settings
-- too many secondary cards
+- broad preset scenarios
 - long marketing paragraphs
 - too many equal-weight buttons
 
@@ -405,10 +373,7 @@ For the first implementation, build:
 2. free support card
 3. active child or add child card
 4. SOS hero card
-5. quick situations chips
-
-Optional for slightly later:
-6. small continuity preview
+5. small continuity preview
 
 This keeps the Dashboard engaging without becoming cluttered.
 
@@ -456,3 +421,4 @@ If a skeptical parent opens Sturdy, the Dashboard should feel:
 - clearly built for real parenting moments
 
 And the next action should be obvious within seconds.
+

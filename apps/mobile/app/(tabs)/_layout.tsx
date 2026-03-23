@@ -5,11 +5,12 @@ import { colors } from '../../src/components/ui/theme';
 
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   const icons: Record<string, string> = {
-    Now: '✦',
+    Dashboard: '◉',
+    Profile: '◎',
+    Account: '○',
     Saved: '♡',
     History: '◷',
-    Children: '◎',
-    Account: '○',
+    Children: '◌',
   };
   return (
     <Text style={{ fontSize: 18, color: focused ? colors.primary : colors.textSecondary }}>
@@ -39,29 +40,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Now',
-          tabBarIcon: ({ focused }) => <TabIcon label="Now" focused={focused} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ focused }) => <TabIcon label="Dashboard" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="saved"
+        name="profile"
         options={{
-          title: 'Saved',
-          tabBarIcon: ({ focused }) => <TabIcon label="Saved" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'History',
-          tabBarIcon: ({ focused }) => <TabIcon label="History" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="children"
-        options={{
-          title: 'Children',
-          tabBarIcon: ({ focused }) => <TabIcon label="Children" focused={focused} />,
+          title: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon label="Profile" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -69,6 +56,24 @@ export default function TabsLayout() {
         options={{
           title: 'Account',
           tabBarIcon: ({ focused }) => <TabIcon label="Account" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="saved"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="children"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
