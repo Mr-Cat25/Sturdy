@@ -1,3 +1,7 @@
+// apps/mobile/app/child/new.tsx
+// Fix: uses child_age column (not age_band)
+// Fix: compact layout
+
 import { useRef, useState } from 'react';
 import {
   Pressable,
@@ -16,7 +20,7 @@ import { supabase }        from '../../src/lib/supabase';
 import { colors, radius, shadow, spacing, type } from '../../src/theme';
 
 const AGES   = Array.from({ length: 16 }, (_, i) => i + 2);
-const ITEM_H = 56;
+const ITEM_H = 48;
 
 export default function NewChildScreen() {
   const { session }      = useAuth();
@@ -44,13 +48,16 @@ export default function NewChildScreen() {
         .insert({
           user_id:   session.user.id,
           name:      name.trim(),
-          child_age: age,
+          child_age: age,           // ← correct column name
+          age_band:  age! <= 4 ? '2-4' : age! <= 7 ? '5-7' : '8-12',
         });
       if (dbErr) throw dbErr;
       await reloadChild();
       router.back();
-    } catch {
-      setError('Could not save child profile. Please try again.');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Could not save child profile. Please try again.',
+      );
     } finally {
       setSaving(false);
     }
@@ -67,36 +74,35 @@ export default function NewChildScreen() {
         />
       }
     >
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.back}
-      >
+      <Pressable onPress={() => router.back()} style={styles.back}>
         <Text style={styles.backText}>← Back</Text>
       </Pressable>
 
       <View style={styles.header}>
         <Text style={styles.title}>Add a child</Text>
-        <Text style={styles.sub}>
-          Each child gets their own age-matched scripts.
-        </Text>
+        <Text style={styles.sub}>Each child gets their own age-matched scripts.</Text>
       </View>
 
       <View style={[styles.card, shadow.sm]}>
+
+        {/* Name */}
         <View style={styles.field}>
-          <Text style={styles.label}>Child name</Text>
+          <Text style={styles.fieldLabel}>Child name</Text>
           <TextInput
             autoFocus
             autoCapitalize="words"
+            autoCorrect={false}
             placeholder="Name"
             placeholderTextColor={colors.textMuted}
             value={name}
-            onChangeText={setName}
+            onChangeText={v => { setName(v); if (error) setError(''); }}
             style={styles.nameInput}
           />
         </View>
 
+        {/* Age drum */}
         <View style={styles.field}>
-          <Text style={styles.label}>Exact age</Text>
+          <Text style={styles.fieldLabel}>Exact age</Text>
           <View style={styles.drumWrap}>
             <View pointerEvents="none" style={styles.rail} />
             <ScrollView
@@ -105,9 +111,8 @@ export default function NewChildScreen() {
               decelerationRate="fast"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingVertical: ITEM_H * 2 }}
-              onMomentumScrollEnd={e =>
-                onDrumScroll(e.nativeEvent.contentOffset.y)
-              }
+              onMomentumScrollEnd={e => onDrumScroll(e.nativeEvent.contentOffset.y)}
+              onScrollEndDrag={e => onDrumScroll(e.nativeEvent.contentOffset.y)}
             >
               {AGES.map(a => (
                 <Pressable
@@ -116,17 +121,16 @@ export default function NewChildScreen() {
                   onPress={() => {
                     setAge(a);
                     drumRef.current?.scrollTo({
-                      y:        AGES.indexOf(a) * ITEM_H,
+                      y: AGES.indexOf(a) * ITEM_H,
                       animated: true,
                     });
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.ageText,
-                      age === a && styles.ageSelected,
-                    ]}
-                  >
+                  <Text style={[
+                    styles.ageText,
+                    age === a ? styles.ageSelected : null,
+                    age !== null && Math.abs(a - age) === 1 ? styles.ageNear : null,
+                  ]}>
                     {a}
                   </Text>
                 </Pressable>
@@ -147,14 +151,13 @@ export default function NewChildScreen() {
 const styles = StyleSheet.create({
   back:     { alignSelf: 'flex-start', paddingVertical: spacing.xs },
   backText: { ...type.body, fontWeight: '600', color: colors.textSecondary },
+  header:   { gap: spacing.xs },
+  title:    { fontSize: 28, fontWeight: '800', color: colors.text },
+  sub:      { ...type.body, color: colors.textSecondary },
 
-  header: { gap: spacing.xs },
-  title:  { fontSize: 28, fontWeight: '800', color: colors.text },
-  sub:    { ...type.body, color: colors.textSecondary },
-
-  card:  { backgroundColor: colors.surface, borderRadius: radius.large, padding: spacing.lg, gap: spacing.xl },
-  field: { gap: spacing.sm },
-  label: { ...type.label, color: colors.textSecondary, textTransform: 'uppercase' },
+  card:  { backgroundColor: colors.surface, borderRadius: radius.large, padding: spacing.lg, gap: spacing.lg },
+  field: { gap: spacing.xs },
+  fieldLabel: { ...type.label, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
 
   nameInput: {
     fontSize:          24,
@@ -178,8 +181,9 @@ const styles = StyleSheet.create({
     borderColor:       colors.border,
   },
   ageItem:     { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
-  ageText:     { fontSize: 22, color: colors.textMuted, opacity: 0.4 },
-  ageSelected: { fontSize: 28, fontWeight: '700', color: colors.text, opacity: 1 },
+  ageText:     { fontSize: 20, color: colors.textMuted, opacity: 0.35 },
+  ageNear:     { opacity: 0.6 },
+  ageSelected: { fontSize: 26, fontWeight: '700', color: colors.text, opacity: 1 },
   ageConfirm:  { ...type.caption, color: colors.sage, fontWeight: '600' },
   ageHint:     { ...type.caption, color: colors.textMuted },
   error:       { ...type.bodySmall, color: colors.dangerDark },
