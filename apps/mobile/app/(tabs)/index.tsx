@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+// app/(tabs)/index.tsx — Usage counter wired to Supabase usage_events
+// FREE_REMAINING is now real — no more hardcoded placeholder.
+// Guests always show full quota (5) — no DB call needed.
+
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Modal,
@@ -14,10 +18,10 @@ import { SafeAreaView }    from 'react-native-safe-area-context';
 import { Button }          from '../../src/components/ui/Button';
 import { useAuth }         from '../../src/context/AuthContext';
 import { useChildProfile } from '../../src/context/ChildProfileContext';
+import { getScriptUsage, type ScriptUsage } from '../../src/lib/getScriptUsage';
 import { colors, radius, shadow, spacing, type } from '../../src/theme';
 
-const FREE_TOTAL     = 5;
-let FREE_REMAINING = 3;
+const FREE_TOTAL = 5;
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -36,10 +40,16 @@ function getDayTime() {
 }
 
 export default function DashboardScreen() {
-  const { session }      = useAuth();
-  const { activeChild }  = useChildProfile();
+  const { session }     = useAuth();
+  const { activeChild } = useChildProfile();
+
+  const [usage,          setUsage]          = useState<ScriptUsage>({
+    used: 0, remaining: FREE_TOTAL, total: FREE_TOTAL, isOut: false,
+  });
+  const [usageLoading,   setUsageLoading]   = useState(true);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
+  // Pulse animation for SOS dot
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(
@@ -50,10 +60,29 @@ export default function DashboardScreen() {
     ).start();
   }, [pulse]);
 
+  // Load real usage count
+  const loadUsage = useCallback(async () => {
+    if (!session?.user?.id) {
+      // Guest — always show full quota
+      setUsage({ used: 0, remaining: FREE_TOTAL, total: FREE_TOTAL, isOut: false });
+      setUsageLoading(false);
+      return;
+    }
+    setUsageLoading(true);
+    try {
+      const result = await getScriptUsage(session.user.id);
+      setUsage(result);
+    } finally {
+      setUsageLoading(false);
+    }
+  }, [session?.user?.id]);
+
+  useEffect(() => { loadUsage(); }, [loadUsage]);
+
   const hasChild     = activeChild !== null;
   const childName    = activeChild?.name;
   const childAge     = activeChild?.childAge;
-  const outOfScripts = FREE_REMAINING ==5;
+  const outOfScripts = usage.isOut;
 
   const greetingName = hasChild
     ? `${getGreeting()},\n${childName}'s parent`
@@ -73,7 +102,7 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Greeting */}
+        {/* ── Greeting ── */}
         <View style={styles.greeting}>
           <Text style={styles.dayTime}>{getDayTime()}</Text>
           <Text style={styles.greetingText}>{greetingName}</Text>
@@ -82,26 +111,44 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
-        {/* Meta strip */}
+        {/* ── Meta strip ── */}
         <View style={styles.metaStrip}>
-          <View style={[styles.metaPill, shadow.sm, outOfScripts && styles.metaPillWarn]}>
+
+          {/* Free scripts pill — real count */}
+          <View style={[
+            styles.metaPill,
+            shadow.sm,
+            outOfScripts && styles.metaPillWarn,
+          ]}>
             <Text style={styles.metaLabel}>Free support</Text>
-            <View style={styles.pips}>
-              {Array.from({ length: FREE_TOTAL }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[styles.pip, i < FREE_REMAINING ? styles.pipOn : styles.pipOff]}
-                />
-              ))}
-            </View>
-            <Text style={styles.metaValue}>
-              {outOfScripts ? 'No scripts left' : `${FREE_REMAINING} remaining`}
-            </Text>
+            {usageLoading ? (
+              <Text style={styles.metaValue}>—</Text>
+            ) : (
+              <>
+                <View style={styles.pips}>
+                  {Array.from({ length: FREE_TOTAL }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.pip,
+                        i < usage.remaining ? styles.pipOn : styles.pipOff,
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.metaValue}>
+                  {outOfScripts
+                    ? 'No scripts left'
+                    : `${usage.remaining} of ${FREE_TOTAL} remaining`}
+                </Text>
+              </>
+            )}
             <Pressable onPress={() => setPaywallVisible(true)}>
               <Text style={styles.metaAction}>Unlock unlimited →</Text>
             </Pressable>
           </View>
 
+          {/* Active child pill */}
           <View style={[styles.metaPill, shadow.sm]}>
             <Text style={styles.metaLabel}>Active child</Text>
             {hasChild ? (
@@ -129,7 +176,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* SOS Hero */}
+        {/* ── SOS Hero ── */}
         <Pressable
           onPress={handleSOS}
           style={({ pressed }) => [styles.sosCard, pressed && { opacity: 0.94 }]}
@@ -138,13 +185,11 @@ export default function DashboardScreen() {
             <Animated.View style={[styles.sosDot, { opacity: pulse }]} />
             <Text style={styles.sosBadgeText}>For hard moments right now</Text>
           </View>
-
           <Text style={styles.sosWord}>SOS</Text>
           <Text style={styles.sosSub}>Immediate support</Text>
           <Text style={styles.sosDesc}>
             Describe what's happening and get calm, practical words you can use right away.
           </Text>
-
           <View style={styles.sosBtn}>
             <Button
               label={outOfScripts ? 'See upgrade options' : 'Start SOS'}
@@ -155,7 +200,7 @@ export default function DashboardScreen() {
           </View>
         </Pressable>
 
-        {/* Continuity */}
+        {/* ── Continuity ── */}
         <View style={styles.previewCard}>
           <Text style={styles.previewText}>
             Saved scripts and history live in{' '}
@@ -170,7 +215,7 @@ export default function DashboardScreen() {
 
       </ScrollView>
 
-      {/* Paywall bottom sheet */}
+      {/* ── Paywall — bottom sheet ── */}
       <Modal
         visible={paywallVisible}
         transparent
@@ -246,11 +291,8 @@ const styles = StyleSheet.create({
   greeting:     { gap: 4 },
   dayTime:      { ...type.label, color: colors.textMuted, textTransform: 'uppercase' },
   greetingText: {
-    fontSize:      26,
-    fontWeight:    '800',
-    color:         colors.text,
-    lineHeight:    32,
-    letterSpacing: -0.3,
+    fontSize: 26, fontWeight: '800', color: colors.text,
+    lineHeight: 32, letterSpacing: -0.3,
   },
   greetingSub: { ...type.body, color: colors.textSecondary },
 
@@ -269,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amberLight,
   },
   metaLabel:  { ...type.label, color: colors.textMuted, textTransform: 'uppercase' },
-  metaValue:  { fontSize: 14, fontWeight: '700', color: colors.text },
+  metaValue:  { fontSize: 13, fontWeight: '700', color: colors.text },
   metaAction: { fontSize: 11, fontWeight: '700', color: colors.primary, marginTop: 2 },
 
   pips:   { flexDirection: 'row', gap: 3, marginVertical: 2 },
@@ -278,13 +320,9 @@ const styles = StyleSheet.create({
   pipOff: { backgroundColor: 'rgba(200,136,58,0.15)' },
 
   childAvatar: {
-    width:           28,
-    height:          28,
-    borderRadius:    radius.pill,
+    width: 28, height: 28, borderRadius: radius.pill,
     backgroundColor: colors.sage,
-    alignItems:      'center',
-    justifyContent:  'center',
-    marginVertical:  2,
+    alignItems: 'center', justifyContent: 'center', marginVertical: 2,
   },
   childAvatarText: { fontSize: 13, fontWeight: '800', color: colors.textInverse },
 
@@ -299,17 +337,12 @@ const styles = StyleSheet.create({
   sosBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   sosDot:      { width: 7, height: 7, borderRadius: radius.pill, backgroundColor: colors.danger },
   sosBadgeText: {
-    ...type.label,
-    color:         'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...type.label, color: 'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase', letterSpacing: 0.8,
   },
   sosWord: {
-    fontSize:      64,
-    fontWeight:    '800',
-    color:         colors.textInverse,
-    lineHeight:    64,
-    letterSpacing: -2,
+    fontSize: 64, fontWeight: '800', color: colors.textInverse,
+    lineHeight: 64, letterSpacing: -2,
   },
   sosSub:  { ...type.body, color: 'rgba(255,255,255,0.4)', marginTop: -spacing.xs },
   sosDesc: { ...type.body, color: 'rgba(255,255,255,0.65)', lineHeight: 26 },
@@ -325,6 +358,7 @@ const styles = StyleSheet.create({
   previewText: { ...type.bodySmall, color: colors.textSecondary },
   previewLink: { color: colors.primary, fontWeight: '700' },
 
+  // Paywall sheet
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(26,24,20,0.45)' },
   sheet: {
     backgroundColor:  colors.surface,
@@ -336,34 +370,24 @@ const styles = StyleSheet.create({
     marginBottom:     spacing.md,
   },
   sheetHandle: {
-    width:           36,
-    height:          4,
-    borderRadius:    2,
+    width: 36, height: 4, borderRadius: 2,
     backgroundColor: colors.borderSoft,
-    alignSelf:       'center',
-    marginBottom:    spacing.sm,
+    alignSelf: 'center', marginBottom: spacing.sm,
   },
   sheetHeadline: { fontSize: 22, fontWeight: '800', color: colors.text, lineHeight: 28 },
   sheetSub:      { ...type.body, color: colors.textSecondary, lineHeight: 24 },
 
   sheetPerks: {
-    gap:             spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius:    radius.medium,
-    padding:         spacing.md,
+    gap: spacing.sm, backgroundColor: colors.background,
+    borderRadius: radius.medium, padding: spacing.md,
   },
   sheetPerk:  { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
   perkCheck: {
-    width:           18,
-    height:          18,
-    borderRadius:    radius.pill,
+    width: 18, height: 18, borderRadius: radius.pill,
     backgroundColor: colors.sageLight,
-    borderWidth:     1,
-    borderColor:     'rgba(124,154,135,0.3)',
-    alignItems:      'center',
-    justifyContent:  'center',
-    marginTop:       1,
-    flexShrink:      0,
+    borderWidth: 1, borderColor: 'rgba(124,154,135,0.3)',
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 1, flexShrink: 0,
   },
   perkCheckText: { fontSize: 9, fontWeight: '800', color: colors.sage },
   perkText:      { ...type.bodySmall, color: colors.textSecondary, flex: 1 },
@@ -372,12 +396,10 @@ const styles = StyleSheet.create({
   sheetPriceBig:    { fontSize: 32, fontWeight: '800', color: colors.text },
   sheetPricePeriod: { ...type.body, color: colors.textMuted },
   sheetPricePill: {
-    backgroundColor:   colors.sageLight,
-    borderRadius:      radius.pill,
-    paddingHorizontal: spacing.xs,
-    paddingVertical:   2,
-    marginLeft:        spacing.xs,
+    backgroundColor: colors.sageLight, borderRadius: radius.pill,
+    paddingHorizontal: spacing.xs, paddingVertical: 2, marginLeft: spacing.xs,
   },
   sheetPricePillText: { fontSize: 10, fontWeight: '700', color: colors.sage },
   sheetTerms:         { ...type.caption, color: colors.textMuted, textAlign: 'center' },
 });
+
