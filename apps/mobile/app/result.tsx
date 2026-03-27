@@ -458,3 +458,4 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
   modalBody:  { ...type.body, color: colors.textSecondary, lineHeight: 24 },
 });
+
