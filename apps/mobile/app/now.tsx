@@ -1,6 +1,6 @@
-// app/now.tsx — Phase A update
-// Handles CrisisDetectedError → routes to /crisis
-// Adds "This feels unsafe" button at bottom
+// app/now.tsx — Phase B update
+// Shows neurotype pill above textarea when set (premium users)
+// Passes neurotype to getParentingScript — silent, parent never sees it change
 
 import { useEffect, useState } from 'react';
 import {
@@ -22,19 +22,31 @@ import { useChildProfile }    from '../src/context/ChildProfileContext';
 import { getParentingScript, CrisisDetectedError } from '../src/lib/api';
 import { colors, radius, spacing, type } from '../src/theme';
 
+// Neurotype display config
+const NEUROTYPE_LABELS: Record<string, string> = {
+  ADHD:    'ADHD',
+  Autism:  'Autism',
+  Anxiety: 'Anxiety',
+  Sensory: 'Sensory Processing',
+  PDA:     'PDA',
+  '2e':    'Twice Exceptional',
+};
+
 export default function NowScreen() {
   const navigation = useRouter();
   const params     = useLocalSearchParams<{ reset?: string }>();
-  const { session }      = useAuth();
-  const { activeChild }  = useChildProfile();
+  const { session }     = useAuth();
+  const { activeChild } = useChildProfile();
+
   const [situation, setSituation] = useState('');
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
 
-  const childName = activeChild?.name    ?? null;
-  const childAge  = activeChild?.childAge ?? null;
-  const childId   = activeChild?.id       ?? undefined;
-  const userId    = session?.user?.id     ?? undefined;
+  const childName  = activeChild?.name      ?? null;
+  const childAge   = activeChild?.childAge  ?? null;
+  const childId    = activeChild?.id        ?? undefined;
+  const neurotype  = activeChild?.neurotype ?? null;
+  const userId     = session?.user?.id      ?? undefined;
 
   const reset     = Array.isArray(params.reset) ? params.reset[0] : params.reset;
   const canSubmit = Boolean(childName) && childAge !== null && situation.trim().length > 0;
@@ -55,9 +67,10 @@ export default function NowScreen() {
       const script = await getParentingScript({
         childName,
         childAge,
-        message:       msg,
+        message:        msg,
         userId,
         childProfileId: childId,
+        neurotype,      // Phase B — null for free, string for premium
       });
 
       navigation.push({
@@ -70,27 +83,19 @@ export default function NowScreen() {
         },
       });
     } catch (err) {
-      // ─────────────────────────────────────
-      // Crisis detected — route to crisis screen
-      // ─────────────────────────────────────
       if (err instanceof CrisisDetectedError) {
         router.push({
           pathname: '/crisis',
-          params: {
-            crisisType: err.crisisType,
-            riskLevel:  err.riskLevel,
-          },
+          params: { crisisType: err.crisisType, riskLevel: err.riskLevel },
         });
         return;
       }
-
       setError("We couldn't get a script right now. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Manual crisis route — parent taps "This feels unsafe"
   const handleUnsafe = () => {
     router.push({
       pathname: '/crisis',
@@ -111,7 +116,6 @@ export default function NowScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Back */}
           <Pressable
             onPress={() => router.back()}
             style={({ pressed }) => [styles.back, pressed && { opacity: 0.65 }]}
@@ -119,8 +123,8 @@ export default function NowScreen() {
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
 
-          {/* Header */}
           <View style={styles.header}>
+            {/* Child context pill */}
             {childName && childAge !== null ? (
               <View style={styles.contextPill}>
                 <Text style={styles.contextPillText}>
@@ -128,13 +132,23 @@ export default function NowScreen() {
                 </Text>
               </View>
             ) : null}
+
+            {/* Neurotype pill — premium users only, shown above textarea */}
+            {neurotype && NEUROTYPE_LABELS[neurotype] ? (
+              <View style={styles.neurotypePill}>
+                <View style={styles.neurotypeDot} />
+                <Text style={styles.neurotypePillText}>
+                  {NEUROTYPE_LABELS[neurotype]} context active
+                </Text>
+              </View>
+            ) : null}
+
             <Text style={styles.title}>{"What's happening\nright now?"}</Text>
             <Text style={styles.sub}>
               Describe the moment and get calm words to say.
             </Text>
           </View>
 
-          {/* No child warning */}
           {(!childName || childAge === null) ? (
             <View style={styles.noChildCard}>
               <Text style={styles.noChildText}>
@@ -146,7 +160,6 @@ export default function NowScreen() {
             </View>
           ) : null}
 
-          {/* Textarea */}
           <View style={styles.textareaWrap}>
             <TextInput
               autoFocus={Boolean(childName) && childAge !== null}
@@ -155,10 +168,7 @@ export default function NowScreen() {
               placeholder="My child is screaming because we have to leave the park."
               placeholderTextColor="rgba(255,255,255,0.22)"
               value={situation}
-              onChangeText={v => {
-                setSituation(v);
-                if (error) setError('');
-              }}
+              onChangeText={v => { setSituation(v); if (error) setError(''); }}
               style={styles.textarea}
               textAlignVertical="top"
             />
@@ -169,7 +179,6 @@ export default function NowScreen() {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {/* Get Script CTA */}
           <Button
             label={loading ? 'Getting script…' : 'Get Script'}
             onPress={handleGetScript}
@@ -179,7 +188,6 @@ export default function NowScreen() {
             dark
           />
 
-          {/* This feels unsafe — always visible */}
           <Pressable
             onPress={handleUnsafe}
             style={({ pressed }) => [styles.unsafeBtn, pressed && { opacity: 0.65 }]}
@@ -210,6 +218,7 @@ const styles = StyleSheet.create({
   backText: { ...type.body, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
 
   header: { gap: spacing.sm },
+
   contextPill: {
     alignSelf:         'flex-start',
     backgroundColor:   'rgba(124,154,135,0.15)',
@@ -220,6 +229,27 @@ const styles = StyleSheet.create({
     paddingVertical:   4,
   },
   contextPillText: { ...type.label, color: colors.sage },
+
+  // Neurotype pill — amber tint, subtle
+  neurotypePill: {
+    alignSelf:         'flex-start',
+    backgroundColor:   'rgba(200,136,58,0.12)',
+    borderWidth:       1,
+    borderColor:       'rgba(200,136,58,0.25)',
+    borderRadius:      radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   4,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               5,
+  },
+  neurotypeDot: {
+    width:           5,
+    height:          5,
+    borderRadius:    radius.pill,
+    backgroundColor: colors.amber,
+  },
+  neurotypePillText: { ...type.label, color: colors.amber },
 
   title: {
     fontSize:      30,
@@ -260,13 +290,12 @@ const styles = StyleSheet.create({
   },
   errorText: { ...type.bodySmall, color: colors.dangerDark },
 
-  // "This feels unsafe" — subdued, always present, non-alarming
   unsafeBtn: {
-    alignSelf:      'center',
-    paddingVertical: spacing.xs,
+    alignSelf:         'center',
+    paddingVertical:   spacing.xs,
     paddingHorizontal: spacing.sm,
-    minHeight: 44,
-    justifyContent: 'center',
+    minHeight:         44,
+    justifyContent:    'center',
   },
   unsafeBtnText: {
     fontSize:           13,
