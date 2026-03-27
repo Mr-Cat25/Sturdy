@@ -1,8 +1,7 @@
 import { Stack } from 'expo-router';
-
-import { colors } from '../src/components/ui/theme';
-import { AuthProvider } from '../src/context/AuthContext';
+import { AuthProvider }         from '../src/context/AuthContext';
 import { ChildProfileProvider } from '../src/context/ChildProfileContext';
+import { colors }               from '../src/theme';
 
 export default function RootLayout() {
   return (
@@ -10,9 +9,9 @@ export default function RootLayout() {
       <ChildProfileProvider>
         <Stack
           screenOptions={{
-            headerShown: false,
+            headerShown:  false,
             contentStyle: { backgroundColor: colors.background },
-            animation: 'slide_from_right',
+            animation:    'slide_from_right',
           }}
         />
       </ChildProfileProvider>

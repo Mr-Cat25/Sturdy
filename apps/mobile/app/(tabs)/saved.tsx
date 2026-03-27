@@ -1,351 +1,206 @@
-import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { router }       from 'expo-router';
+import { StatusBar }    from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button }       from '../../src/components/ui/Button';
+import { useAuth }      from '../../src/context/AuthContext';
+import {
+  loadSavedScripts,
+  type SavedScriptRow,
+} from '../../src/lib/loadSavedScripts';
+import { colors, radius, shadow, spacing, type } from '../../src/theme';
 
-import { Button } from '../../src/components/ui/Button';
-import { GuestPrompt } from '../../src/components/GuestPrompt';
-import { Screen } from '../../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../../src/components/ui/theme';
-import { useAuth } from '../../src/context/AuthContext';
-import { loadSavedScripts, type SavedScriptRow } from '../../src/lib/loadSavedScripts';
-
-function formatSavedAt(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
+function formatDate(iso: string) {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day:   'numeric',
+      year:  'numeric',
+    }).format(new Date(iso));
+  } catch {
     return 'Saved recently';
   }
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
 }
 
-function buildPreview(script: SavedScriptRow) {
-  const preview = `${script.regulate} ${script.connect} ${script.guide}`.replace(/\s+/g, ' ').trim();
+export default function SavedScreen() {
+  const { session, isLoading: authLoading } = useAuth();
+  const [scripts, setScripts] = useState<SavedScriptRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState('');
 
-  if (preview.length <= 140) {
-    return preview;
-  }
-
-  return `${preview.slice(0, 137).trimEnd()}...`;
-}
-
-export default function SavedTabScreen() {
-  const { width } = useWindowDimensions();
-  const { session, isLoading: isAuthLoading } = useAuth();
-  const [savedScripts, setSavedScripts] = useState<SavedScriptRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [selectedScript, setSelectedScript] = useState<SavedScriptRow | null>(null);
-  const isWide = width >= 700;
+  const load = useCallback(async () => {
+    if (!session) { setLoading(false); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const data = await loadSavedScripts();
+      setScripts(data);
+    } catch {
+      setError('Could not load saved scripts.');
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
 
   useEffect(() => {
-    if (isAuthLoading) {
-      return;
-    }
+    if (!authLoading) load();
+  }, [authLoading, load]);
 
-    if (!session) {
-      setSavedScripts([]);
-      setIsLoading(false);
-      setErrorMessage('');
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchSavedScripts = async () => {
-      setIsLoading(true);
-      setErrorMessage('');
-
-      try {
-        const scripts = await loadSavedScripts();
-
-        if (isMounted) {
-          setSavedScripts(scripts);
-        }
-      } catch {
-        if (isMounted) {
-          setErrorMessage('We could not load your saved scripts right now. Please try again.');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchSavedScripts();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAuthLoading, session]);
-
-  const handleRetry = async () => {
-    if (!session) {
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage('');
-
-    try {
-      const scripts = await loadSavedScripts();
-      setSavedScripts(scripts);
-    } catch {
-      setErrorMessage('We could not load your saved scripts right now. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Guest state
+  if (!session && !authLoading) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <StatusBar style="dark" />
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>Sign in to see saved scripts</Text>
+          <Text style={styles.emptyBody}>
+            Your saved scripts are stored with your account.
+          </Text>
+          <Button
+            label="Sign in"
+            onPress={() => router.push('/auth/sign-in')}
+            style={styles.emptyBtn}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <Screen>
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setSelectedScript(null)}
-        transparent
-        visible={Boolean(selectedScript)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Saved script</Text>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <StatusBar style="dark" />
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Saved scripts</Text>
+        <Text style={styles.sub}>Scripts that helped, ready to use again.</Text>
 
-            {selectedScript ? (
-              <ScrollView
-                contentContainerStyle={styles.modalContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Situation</Text>
-                  <Text style={styles.detailText}>{selectedScript.situation_summary}</Text>
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Regulate</Text>
-                  <Text style={styles.detailText}>{selectedScript.regulate}</Text>
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Connect</Text>
-                  <Text style={styles.detailText}>{selectedScript.connect}</Text>
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Guide</Text>
-                  <Text style={styles.detailText}>{selectedScript.guide}</Text>
-                </View>
-              </ScrollView>
-            ) : null}
-
-            <Button label="Close" onPress={() => setSelectedScript(null)} />
+        {loading ? (
+          <ActivityIndicator
+            color={colors.amber}
+            style={{ marginTop: spacing.xl }}
+          />
+        ) : error ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Button label="Try again" size="md" variant="ghost" onPress={load} />
           </View>
-        </View>
-      </Modal>
-
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
-
-      <View style={[styles.header, isWide ? styles.headerWide : null]}>
-        <Text style={styles.title}>Saved Scripts</Text>
-        <Text style={styles.subtitle}>A calm place to revisit scripts you wanted to keep.</Text>
-      </View>
-
-      {isAuthLoading || isLoading ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>Loading saved scripts...</Text>
-        </View>
-      ) : null}
-
-      {!isAuthLoading && !session ? (
-        <GuestPrompt
-          title="Saved scripts"
-          body="Create an account to save scripts and revisit them whenever you need."
-        />
-      ) : null}
-
-      {!isLoading && Boolean(errorMessage) ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <View style={styles.retryWrap}>
-            <Button label="Try Again" onPress={handleRetry} />
+        ) : scripts.length === 0 ? (
+          <View style={[styles.emptyCard, shadow.sm]}>
+            <Text style={styles.emptyCardTitle}>No saved scripts yet</Text>
+            <Text style={styles.emptyCardBody}>
+              After getting a script, tap "Save script" to add it here.
+            </Text>
+            <Button
+              label="Start SOS"
+              size="md"
+              onPress={() => router.push('/now')}
+            />
           </View>
-        </View>
-      ) : null}
-
-      {!isLoading && !errorMessage && session && savedScripts.length === 0 ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>No saved scripts yet.</Text>
-        </View>
-      ) : null}
-
-      {!isLoading && !errorMessage && session ? (
-        <View style={styles.list}>
-          {savedScripts.map((script) => (
-            <Pressable
-              accessibilityRole="button"
-              key={script.id}
-              onPress={() => setSelectedScript(script)}
-              style={({ pressed }) => [styles.scriptCard, pressed ? styles.scriptCardPressed : null]}
-            >
-              <View style={styles.scriptMetaRow}>
-                <Text style={styles.scriptDate}>{formatSavedAt(script.created_at)}</Text>
-                {script.child_age !== null ? (
-                  <View style={styles.ageChip}>
-                    <Text style={styles.ageChipText}>Age {script.child_age}</Text>
-                  </View>
+        ) : (
+          scripts.map(s => (
+            <View key={s.id} style={[styles.scriptCard, shadow.sm]}>
+              <View style={styles.scriptMeta}>
+                <Text style={styles.scriptDate}>{formatDate(s.created_at)}</Text>
+                {s.child_age ? (
+                  <Text style={styles.scriptAge}>Age {s.child_age}</Text>
                 ) : null}
               </View>
-
-              <Text style={styles.scriptTitle}>{script.situation_summary}</Text>
-              <Text style={styles.scriptPreview}>{buildPreview(script)}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-    </Screen>
+              <Text style={styles.scriptSummary}>{s.situation_summary}</Text>
+              <View style={styles.scriptBadges}>
+                {(
+                  [
+                    { step: 'Regulate', bg: colors.sageLight,    tc: colors.sage    },
+                    { step: 'Connect',  bg: colors.primaryLight,  tc: colors.primary },
+                    { step: 'Guide',    bg: colors.amberLight,    tc: colors.amber   },
+                  ] as const
+                ).map(({ step, bg, tc }) => (
+                  <View key={step} style={[styles.badge, { backgroundColor: bg }]}>
+                    <Text style={[styles.badgeText, { color: tc }]}>{step}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.scriptPreview} numberOfLines={2}>
+                {s.regulate}
+              </Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
+  root:    { flex: 1, backgroundColor: colors.background },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.lg,
   },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
+  title: { fontSize: 30, fontWeight: '800', color: colors.text, lineHeight: 36 },
+  sub:   { ...type.body, color: colors.textSecondary },
+
+  empty: {
+    flex:           1,
+    alignItems:     'center',
+    justifyContent: 'center',
+    padding:        spacing.xl,
+    gap:            spacing.md,
   },
-  header: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  headerWide: {
-    maxWidth: 820,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 36,
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  stateCard: {
+  emptyTitle: { fontSize: 22, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  emptyBody:  { ...type.body, color: colors.textSecondary, textAlign: 'center' },
+  emptyBtn:   { alignSelf: 'center' },
+
+  emptyCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    borderRadius:    radius.large,
+    padding:         spacing.xl,
+    gap:             spacing.md,
+    alignItems:      'center',
   },
-  stateTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 24,
+  emptyCardTitle: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  emptyCardBody:  { ...type.bodySmall, color: colors.textSecondary, textAlign: 'center' },
+
+  errorCard: {
+    backgroundColor: colors.dangerLight,
+    borderRadius:    radius.large,
+    padding:         spacing.lg,
+    gap:             spacing.sm,
   },
-  errorText: {
-    color: '#B45309',
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  retryWrap: {
-    paddingTop: spacing.xs,
-  },
-  list: {
-    gap: spacing.md,
-  },
+  errorText: { ...type.bodySmall, color: colors.dangerDark },
+
   scriptCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    ...shadow,
+    borderRadius:    radius.large,
+    padding:         spacing.lg,
+    gap:             spacing.sm,
   },
-  scriptCardPressed: {
-    opacity: 0.92,
+  scriptMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  scriptDate: { ...type.caption, color: colors.textMuted },
+  scriptAge:  {
+    ...type.caption,
+    color:             colors.sage,
+    fontWeight:        '700',
+    backgroundColor:   colors.sageLight,
+    paddingHorizontal: 8,
+    paddingVertical:   2,
+    borderRadius:      radius.pill,
   },
-  scriptMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
+  scriptSummary: { ...type.bodySmall, color: colors.textSecondary, lineHeight: 20 },
+  scriptBadges:  { flexDirection: 'row', gap: spacing.xs },
+  badge: {
+    borderRadius:      radius.pill,
+    paddingHorizontal: spacing.xs,
+    paddingVertical:   3,
   },
-  scriptDate: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  ageChip: {
-    borderRadius: radius.pill,
-    backgroundColor: colors.successBackground,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  ageChipText: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
-  scriptTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 26,
-  },
-  scriptPreview: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.42)',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    maxHeight: '86%',
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 30,
-  },
-  modalContent: {
-    gap: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  detailSection: {
-    gap: spacing.xs,
-  },
-  detailLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
-    textTransform: 'uppercase',
-  },
-  detailText: {
-    color: colors.text,
-    fontSize: 16,
-    lineHeight: 24,
-  },
+  badgeText:     { fontSize: 10, fontWeight: '800' },
+  scriptPreview: { ...type.body, fontWeight: '600', color: colors.text, lineHeight: 24 },
 });

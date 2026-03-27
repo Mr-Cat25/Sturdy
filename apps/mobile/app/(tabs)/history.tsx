@@ -1,66 +1,35 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar }    from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, spacing, type } from '../../src/theme';
 
-import { GuestPrompt } from '../../src/components/GuestPrompt';
-import { colors, spacing } from '../../src/components/ui/theme';
-import { useAuth } from '../../src/context/AuthContext';
-
-export default function HistoryTabScreen() {
-  const { session, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <View style={styles.container} />;
-  }
-
-  if (!session) {
-    return (
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <StatusBar style="dark" />
-        <GuestPrompt
-          title="Your script history"
-          body="Create an account to keep a history of every script you've generated."
-        />
-      </SafeAreaView>
-    );
-  }
-
+export default function HistoryScreen() {
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <View style={styles.content}>
         <Text style={styles.title}>History</Text>
-        <Text style={styles.empty}>Your generated scripts will appear here.</Text>
+        <Text style={styles.sub}>Your past hard moments and scripts.</Text>
+        <View style={styles.placeholder}>
+          <Text style={styles.placeholderText}>
+            Conversation history coming in Phase 2.
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  root:    { flex: 1, backgroundColor: colors.background },
   content: {
-    flex: 1,
+    flex:              1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    gap: spacing.md,
+    paddingTop:        spacing.md,
+    gap:               spacing.lg,
   },
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 36,
-  },
-  empty: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-  },
+  title:           { fontSize: 30, fontWeight: '800', color: colors.text, lineHeight: 36 },
+  sub:             { ...type.body, color: colors.textSecondary },
+  placeholder:     { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  placeholderText: { ...type.body, color: colors.textMuted, textAlign: 'center' },
 });
-

@@ -1,80 +1,78 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
-
-import { Button as PrimaryButton } from '../src/components/ui/Button';
-import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
-import { useAuth } from '../src/context/AuthContext';
+import { Button }          from '../src/components/ui/Button';
+import { ScriptCard }      from '../src/components/ui/ScriptCard';
+import { Screen }          from '../src/components/ui/Screen';
+import { useAuth }         from '../src/context/AuthContext';
 import { useChildProfile } from '../src/context/ChildProfileContext';
-import { saveScript } from '../src/lib/saveScript';
+import { saveScript }      from '../src/lib/saveScript';
 import type { ParentingScriptResponse } from '../src/types/parentingScript';
+import { colors, radius, shadow, spacing, type } from '../src/theme';
 
-type ResultParams = {
+type Params = {
   situationSummary?: string;
-  regulate?: string;
-  connect?: string;
-  guide?: string;
+  regulate?:         string;
+  connect?:          string;
+  guide?:            string;
 };
 
-function getValue(value?: string | string[]) {
-  return Array.isArray(value) ? value[0] : value;
-}
+const val = (v?: string | string[]) => Array.isArray(v) ? v[0] : v;
 
 export default function ResultScreen() {
   const navigation = useRouter();
-  const params = useLocalSearchParams<ResultParams>();
-  const { width } = useWindowDimensions();
+  const params     = useLocalSearchParams<Params>();
   const { session, isLoading } = useAuth();
-  const { draft } = useChildProfile();
-  const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveErrorMessage, setSaveErrorMessage] = useState('');
-  const isWide = width >= 700;
+  const { activeChild }        = useChildProfile();
+
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+  const [feedback, setFeedback]       = useState<'helped' | 'not' | null>(null);
+  const [nudgeVisible, setNudgeVisible] = useState(false);
 
   const script: ParentingScriptResponse = {
-    situation_summary:
-      getValue(params.situationSummary) || 'We could not load the situation summary for this script.',
-    regulate: getValue(params.regulate) || 'We could not load the regulation step for this script.',
-    connect: getValue(params.connect) || 'We could not load the connection step for this script.',
-    guide: getValue(params.guide) || 'We could not load the guidance step for this script.',
+    situation_summary: val(params.situationSummary) || 'Situation unavailable.',
+    regulate:          val(params.regulate)         || 'Script unavailable.',
+    connect:           val(params.connect)          || 'Script unavailable.',
+    guide:             val(params.guide)            || 'Script unavailable.',
   };
 
   useEffect(() => {
-    setIsSaved(false);
-    setIsSaving(false);
-    setSaveErrorMessage('');
-  }, [script.connect, script.guide, script.regulate, script.situation_summary]);
+    setSaved(false);
+    setSaving(false);
+    setSaveErr('');
+    setFeedback(null);
+    setNudgeVisible(false);
+  }, [script.regulate]);
 
-  const handleSaveScript = async () => {
-    if (isLoading || isSaving) {
-      return;
-    }
-
-    if (!session) {
-      setSaveErrorMessage('');
-      setIsSaveModalVisible(true);
-      return;
-    }
-
-    setIsSaveModalVisible(false);
-    setSaveErrorMessage('');
-    setIsSaving(true);
-
+  const handleSave = async () => {
+    if (isLoading || saving) return;
+    if (!session) { setSaveModalVisible(true); return; }
+    setSaveModalVisible(false);
+    setSaveErr('');
+    setSaving(true);
     try {
       await saveScript({
         situation_summary: script.situation_summary,
-        regulate: script.regulate,
-        connect: script.connect,
-        guide: script.guide,
-        childAge: draft.childAge,
+        regulate:          script.regulate,
+        connect:           script.connect,
+        guide:             script.guide,
+        childAge:          activeChild?.childAge ?? null,
       });
-      setIsSaved(true);
+      setSaved(true);
     } catch {
-      setSaveErrorMessage('We could not save this script right now. Please try again.');
+      setSaveErr('Could not save right now. Please try again.');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
@@ -84,367 +82,288 @@ export default function ResultScreen() {
       `Connect: ${script.connect}`,
       `Guide: ${script.guide}`,
     ].join('\n\n');
+    try { await Share.share({ message: text }); } catch { }
+  };
 
-    try {
-      await Share.share({ message: text });
-    } catch (error) {
-      console.warn('[STURDY] Share failed', error);
+  const handleFeedback = (v: 'helped' | 'not') => {
+    setFeedback(v);
+    if (v === 'helped') {
+      setTimeout(() => setNudgeVisible(true), 400);
     }
   };
 
   return (
     <Screen
       footer={
-        <View style={styles.footerActions}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleSaveScript}
-            disabled={isLoading || isSaving}
-            style={({ pressed }) => [
-              styles.saveButton,
-              isSaved ? styles.saveButtonSaved : null,
-              isLoading || isSaving ? styles.saveButtonDisabled : null,
-              pressed ? styles.saveButtonPressed : null,
-            ]}
-          >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save Script'}
-            </Text>
-          </Pressable>
-
-          {isSaved ? <Text style={styles.saveHelperText}>Script saved.</Text> : null}
-          {saveErrorMessage ? <Text style={styles.saveErrorText}>{saveErrorMessage}</Text> : null}
-
-          <PrimaryButton
-            label="Try Another"
+        <View style={styles.footerRow}>
+          <Button
+            label={saved ? 'Saved ✓' : saving ? 'Saving…' : 'Save script'}
+            variant="ghost"
+            size="md"
+            disabled={saved || saving}
+            onPress={handleSave}
+            style={styles.footerBtn}
+          />
+          <Button
+            label="Try another"
+            size="md"
             onPress={() =>
-              navigation.navigate({
-                pathname: '/(tabs)',
-                params: {
-                  reset: String(Date.now()),
-                },
+              navigation.push({
+                pathname: '/now',
+                params:   { reset: Date.now().toString() },
               })
             }
+            style={styles.footerBtn}
           />
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleShare}
-            style={({ pressed }) => [styles.shareButton, pressed ? styles.shareButtonPressed : null]}
-          >
-            <Text style={styles.shareButtonText}>Share</Text>
-          </Pressable>
         </View>
       }
     >
+      {/* Situation */}
+      <View style={[styles.situation, shadow.sm]}>
+        <Text style={styles.situationLabel}>Situation</Text>
+        <Text style={styles.situationText}>{script.situation_summary}</Text>
+      </View>
+
+      {/* Script cards — staggered */}
+      <ScriptCard
+        step="Regulate"
+        action="Take one slow breath. Move closer."
+        script={script.regulate}
+        delay={0}
+      />
+      <ScriptCard
+        step="Connect"
+        action="Name the feeling. Hold the limit."
+        script={script.connect}
+        delay={220}
+      />
+      <ScriptCard
+        step="Guide"
+        action="One clear next step."
+        script={script.guide}
+        delay={440}
+      />
+
+      {/* Share */}
+      <Pressable
+        onPress={handleShare}
+        style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.65 }]}
+      >
+        <Text style={styles.shareText}>Share script</Text>
+      </Pressable>
+
+      {saveErr ? <Text style={styles.saveErr}>{saveErr}</Text> : null}
+
+      {/* Feedback */}
+      <View style={[styles.feedbackCard, shadow.sm]}>
+        <Text style={styles.feedbackQ}>Did this help?</Text>
+        <View style={styles.feedbackBtns}>
+          <Pressable
+            onPress={() => handleFeedback('helped')}
+            style={[
+              styles.feedbackBtn,
+              feedback === 'helped' && styles.feedbackBtnActive,
+            ]}
+          >
+            <Text style={styles.feedbackBtnText}>👍 That helped</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => handleFeedback('not')}
+            style={[
+              styles.feedbackBtn,
+              feedback === 'not' && styles.feedbackBtnActive,
+            ]}
+          >
+            <Text style={styles.feedbackBtnText}>👎 Not really</Text>
+          </Pressable>
+        </View>
+        {feedback === 'not' ? (
+          <Text style={styles.feedbackThanks}>Got it. We'll keep improving.</Text>
+        ) : null}
+      </View>
+
+      {/* Paywall nudge — after positive feedback */}
+      {nudgeVisible ? (
+        <View style={[styles.nudge, shadow.sm]}>
+          <View style={styles.nudgeHeader}>
+            <Text style={styles.nudgeIcon}>✦</Text>
+            <Text style={styles.nudgeTitle}>
+              Scripts that work{'\n'}deserve to be saved.
+            </Text>
+          </View>
+          <Text style={styles.nudgeBody}>
+            This one helped. Upgrade to save every script that works — and
+            build a library that knows your child.
+          </Text>
+          <View style={styles.nudgeStats}>
+            {[
+              ['5', 'Scripts used'],
+              ['0', 'Remaining free'],
+              ['$7', '/ month'],
+            ].map(([n, l]) => (
+              <View key={l} style={styles.nudgeStat}>
+                <Text style={styles.nudgeStatNum}>{n}</Text>
+                <Text style={styles.nudgeStatLbl}>{l}</Text>
+              </View>
+            ))}
+          </View>
+          <Button
+            label="Save this · Unlock unlimited"
+            variant="amber"
+            size="md"
+            onPress={() => setNudgeVisible(false)}
+          />
+          <Pressable
+            onPress={() => setNudgeVisible(false)}
+            style={styles.nudgeSkip}
+          >
+            <Text style={styles.nudgeSkipText}>
+              I'll use my last free script instead
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Guest save modal */}
       <Modal
-        animationType="fade"
-        onRequestClose={() => setIsSaveModalVisible(false)}
+        visible={saveModalVisible}
         transparent
-        visible={isSaveModalVisible}
+        animationType="fade"
+        onRequestClose={() => setSaveModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Save this script</Text>
+          <View style={[styles.modalCard, shadow.lg]}>
+            <Text style={styles.modalTitle}>Sign in to save</Text>
             <Text style={styles.modalBody}>
-              Create a free account to save this script and come back to it later.
+              Create a free account to save scripts and build your support library.
             </Text>
-
-            <View style={styles.modalActions}>
-              <PrimaryButton
-                label="Create Free Account"
-                onPress={() => {
-                  setIsSaveModalVisible(false);
-                  navigation.push('/auth/sign-up');
-                }}
-              />
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setIsSaveModalVisible(false)}
-                style={({ pressed }) => [
-                  styles.maybeLaterButton,
-                  pressed ? styles.maybeLaterButtonPressed : null,
-                ]}
-              >
-                <Text style={styles.maybeLaterButtonText}>Maybe Later</Text>
-              </Pressable>
-            </View>
+            <Button
+              label="Create account"
+              onPress={() => {
+                setSaveModalVisible(false);
+                router.push('/auth/sign-up');
+              }}
+            />
+            <Button
+              label="Not now"
+              variant="ghost"
+              size="md"
+              onPress={() => setSaveModalVisible(false)}
+            />
           </View>
         </View>
       </Modal>
 
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
-
-      <View style={[styles.header, isWide ? styles.headerWide : null]}>
-        <Text style={styles.headerEyebrow}>Sturdy response</Text>
-        <Text style={styles.headerSubtext}>A calm first draft you can say in a real voice on a hard day.</Text>
-      </View>
-
-      <View style={[styles.messageCard, isWide ? styles.messageCardWide : null]}>
-        <Text style={styles.messageLabel}>Your message</Text>
-        <Text style={styles.messageText}>{script.situation_summary}</Text>
-      </View>
-
-      <View style={[styles.responseCard, isWide ? styles.responseCardWide : null]}>
-        <View style={styles.responseHeader}>
-          <Text style={styles.responseEyebrow}>Sturdy response</Text>
-          <Text style={styles.responseTitle}>One guided way to say it</Text>
-          <Text style={styles.responseCaption}>Use this as a single flow, not three separate replies.</Text>
-        </View>
-
-        <View style={styles.responseSection}>
-          <Text style={styles.sectionTitle}>REGULATE</Text>
-          <Text style={styles.sectionHelper}>Get low. Slow voice.</Text>
-          <Text style={styles.sectionText}>{script.regulate}</Text>
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        <View style={styles.responseSection}>
-          <Text style={styles.sectionTitle}>CONNECT</Text>
-          <Text style={styles.sectionHelper}>Name the feeling. Stay on their side.</Text>
-          <Text style={styles.sectionText}>{script.connect}</Text>
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        <View style={styles.responseSection}>
-          <Text style={styles.sectionTitle}>GUIDE</Text>
-          <Text style={styles.sectionHelper}>Offer one next step they can do.</Text>
-          <Text style={styles.sectionText}>{script.guide}</Text>
-        </View>
-      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  footerActions: {
-    gap: spacing.sm,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  header: {
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  headerWide: {
-    maxWidth: 860,
-  },
-  headerEyebrow: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  headerSubtext: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-    flexShrink: 1,
-  },
-  messageCard: {
-    backgroundColor: colors.successBackground,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  messageCardWide: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    width: '100%',
-  },
-  messageLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  messageText: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 28,
-    flexShrink: 1,
-  },
-  responseCard: {
+  situation: {
     backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow,
+    borderRadius:    radius.large,
+    padding:         spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    gap:             spacing.xxs,
   },
-  responseCardWide: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    width: '100%',
-  },
-  responseHeader: {
-    gap: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
-  responseEyebrow: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  responseTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 30,
-    flexShrink: 1,
-  },
-  responseCaption: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  responseSection: {
-    gap: 6,
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: 'rgba(30, 36, 48, 0.08)',
-    marginVertical: spacing.xs,
-  },
-  sectionTitle: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  sectionHelper: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  sectionText: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 28,
-    flexShrink: 1,
-  },
-  saveButton: {
-    minHeight: 56,
-    borderRadius: radius.medium,
-    borderColor: colors.border,
-    borderWidth: 1,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  saveButtonPressed: {
-    backgroundColor: colors.chipBackground,
-  },
-  saveButtonSaved: {
-    backgroundColor: colors.successBackground,
-    borderColor: colors.primary,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  saveHelperText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  saveErrorText: {
-    color: '#B45309',
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  shareButton: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shareButtonPressed: {
-    opacity: 0.7,
-  },
-  shareButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
+  situationLabel: { ...type.label, color: colors.textMuted, textTransform: 'uppercase' },
+  situationText:  { ...type.body, color: colors.textSecondary, lineHeight: 24 },
+
+  shareBtn:  { alignSelf: 'center', paddingVertical: spacing.xs },
+  shareText: {
+    ...type.bodySmall,
+    color:              colors.primary,
+    fontWeight:         '600',
     textDecorationLine: 'underline',
   },
+  saveErr: { ...type.bodySmall, color: colors.dangerDark, textAlign: 'center' },
+
+  feedbackCard: {
+    backgroundColor: colors.surface,
+    borderRadius:    radius.large,
+    padding:         spacing.md,
+    gap:             spacing.sm,
+    borderWidth:     1,
+    borderColor:     colors.borderSoft,
+  },
+  feedbackQ:    {
+    ...type.label,
+    color:         colors.textSecondary,
+    textTransform: 'uppercase',
+    textAlign:     'center',
+  },
+  feedbackBtns: { flexDirection: 'row', gap: spacing.sm },
+  feedbackBtn: {
+    flex:            1,
+    height:          44,
+    borderRadius:    radius.medium,
+    backgroundColor: colors.background,
+    borderWidth:     1.5,
+    borderColor:     colors.border,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  feedbackBtnActive: {
+    backgroundColor: colors.sageLight,
+    borderColor:     'rgba(124,154,135,0.4)',
+  },
+  feedbackBtnText: { ...type.bodySmall, fontWeight: '700', color: colors.text },
+  feedbackThanks:  { ...type.caption, color: colors.textMuted, textAlign: 'center' },
+
+  nudge: {
+    backgroundColor: colors.amberLight,
+    borderRadius:    radius.large,
+    padding:         spacing.lg,
+    gap:             spacing.md,
+    borderWidth:     1,
+    borderColor:     'rgba(200,136,58,0.2)',
+  },
+  nudgeHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  nudgeIcon:   { fontSize: 18, color: colors.amber, marginTop: 2 },
+  nudgeTitle:  {
+    fontSize:   17,
+    fontWeight: '800',
+    color:      colors.text,
+    lineHeight: 24,
+    flex:       1,
+  },
+  nudgeBody:    { ...type.bodySmall, color: colors.textSecondary, lineHeight: 20 },
+  nudgeStats:   { flexDirection: 'row', gap: spacing.sm },
+  nudgeStat: {
+    flex:            1,
+    backgroundColor: colors.surface,
+    borderRadius:    radius.medium,
+    padding:         spacing.sm,
+    alignItems:      'center',
+    borderWidth:     1,
+    borderColor:     colors.borderSoft,
+  },
+  nudgeStatNum: { fontSize: 20, fontWeight: '800', color: colors.text },
+  nudgeStatLbl: {
+    ...type.label,
+    color:         colors.textMuted,
+    textTransform: 'uppercase',
+    textAlign:     'center',
+  },
+  nudgeSkip:     { alignSelf: 'center', paddingVertical: spacing.xxs },
+  nudgeSkipText: { ...type.caption, color: colors.textMuted },
+
+  footerRow: { flexDirection: 'row', gap: spacing.sm },
+  footerBtn: { flex: 1 },
+
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(30, 36, 48, 0.28)',
-    paddingHorizontal: spacing.lg,
-    justifyContent: 'center',
+    flex:            1,
+    backgroundColor: 'rgba(26,24,20,0.5)',
+    justifyContent:  'center',
+    padding:         spacing.lg,
   },
   modalCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+    borderRadius:    radius.xl,
+    padding:         spacing.xl,
+    gap:             spacing.md,
   },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 30,
-  },
-  modalBody: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  modalActions: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  maybeLaterButton: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.medium,
-    backgroundColor: colors.successBackground,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  maybeLaterButtonPressed: {
-    backgroundColor: colors.chipBackground,
-  },
-  maybeLaterButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-    textAlign: 'center',
-  },
+  modalTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
+  modalBody:  { ...type.body, color: colors.textSecondary, lineHeight: 24 },
 });

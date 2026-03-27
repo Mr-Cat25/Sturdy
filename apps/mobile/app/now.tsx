@@ -1,3 +1,7 @@
+// app/now.tsx — Phase A update
+// Handles CrisisDetectedError → routes to /crisis
+// Adds "This feels unsafe" button at bottom
+
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -6,277 +10,269 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
-
-import { Button } from '../src/components/ui/Button';
-import { Chip } from '../src/components/ui/Chip';
-import { Input } from '../src/components/ui/Input';
-import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
-import { useAuth } from '../src/context/AuthContext';
-import { useChildProfile } from '../src/context/ChildProfileContext';
-import { getParentingScript } from '../src/lib/api';
-
-const quickSituationPrompts = [
-  'Bedtime meltdown',
-  'Leaving the park',
-  'Hitting sibling',
-  'Refusing homework',
-];
+import { StatusBar }          from 'expo-status-bar';
+import { SafeAreaView }       from 'react-native-safe-area-context';
+import { Button }             from '../src/components/ui/Button';
+import { useAuth }            from '../src/context/AuthContext';
+import { useChildProfile }    from '../src/context/ChildProfileContext';
+import { getParentingScript, CrisisDetectedError } from '../src/lib/api';
+import { colors, radius, spacing, type } from '../src/theme';
 
 export default function NowScreen() {
   const navigation = useRouter();
-  const params = useLocalSearchParams<{ reset?: string }>();
-  const { width } = useWindowDimensions();
-  const { session } = useAuth();
-  const { draft } = useChildProfile();
+  const params     = useLocalSearchParams<{ reset?: string }>();
+  const { session }      = useAuth();
+  const { activeChild }  = useChildProfile();
   const [situation, setSituation] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const isWide = width >= 700;
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState('');
 
-  const childName = draft.name;
-  const childAge = draft.childAge;
-  const resetToken = Array.isArray(params.reset) ? params.reset[0] : params.reset;
+  const childName = activeChild?.name    ?? null;
+  const childAge  = activeChild?.childAge ?? null;
+  const childId   = activeChild?.id       ?? undefined;
+  const userId    = session?.user?.id     ?? undefined;
+
+  const reset     = Array.isArray(params.reset) ? params.reset[0] : params.reset;
+  const canSubmit = Boolean(childName) && childAge !== null && situation.trim().length > 0;
 
   useEffect(() => {
-    if (!resetToken) {
-      return;
-    }
-
+    if (!reset) return;
     setSituation('');
-    setErrorMessage('');
-  }, [resetToken]);
+    setError('');
+  }, [reset]);
 
   const handleGetScript = async () => {
-    const message = situation.trim();
-
-    console.log('[STURDY_DEBUG] Get Script pressed', {
-      hasMessage: Boolean(message),
-      childAge,
-    });
-
-    if (!message || childAge === null || !childName) {
-      return;
-    }
-
-    const payload = {
-      childName,
-      childAge,
-      message,
-    };
-
-    console.log('[STURDY_DEBUG] Sending payload', payload);
-
-    setErrorMessage('');
-    setIsLoading(true);
+    const msg = situation.trim();
+    if (!msg || !childName || childAge === null) return;
+    setError('');
+    setLoading(true);
 
     try {
-      const script = await getParentingScript(payload);
+      const script = await getParentingScript({
+        childName,
+        childAge,
+        message:       msg,
+        userId,
+        childProfileId: childId,
+      });
 
       navigation.push({
         pathname: '/result',
         params: {
           situationSummary: script.situation_summary,
-          regulate: script.regulate,
-          connect: script.connect,
-          guide: script.guide,
+          regulate:         script.regulate,
+          connect:          script.connect,
+          guide:            script.guide,
         },
       });
-    } catch (error) {
-      console.log('[STURDY_DEBUG] Get Script failed', {
-        error:
-          error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown-error',
-      });
-      setErrorMessage('We could not get a script right now. Please try again.');
+    } catch (err) {
+      // ─────────────────────────────────────
+      // Crisis detected — route to crisis screen
+      // ─────────────────────────────────────
+      if (err instanceof CrisisDetectedError) {
+        router.push({
+          pathname: '/crisis',
+          params: {
+            crisisType: err.crisisType,
+            riskLevel:  err.riskLevel,
+          },
+        });
+        return;
+      }
+
+      setError("We couldn't get a script right now. Please try again.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  // Manual crisis route — parent taps "This feels unsafe"
+  const handleUnsafe = () => {
+    router.push({
+      pathname: '/crisis',
+      params: { crisisType: 'manual', riskLevel: 'ELEVATED_RISK' },
+    });
+  };
+
   return (
-    <Screen scrollable={false}>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? spacing.md : 0}
-        style={styles.keyboardContent}
+        style={styles.keyboard}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          contentInsetAdjustmentBehavior="always"
+          contentContainerStyle={styles.content}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.header, isWide ? styles.headerWide : null]}>
-            <Text style={styles.title}>What&apos;s happening right now?</Text>
-            <Text style={styles.subtitle}>
+          {/* Back */}
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.back, pressed && { opacity: 0.65 }]}
+          >
+            <Text style={styles.backText}>← Back</Text>
+          </Pressable>
+
+          {/* Header */}
+          <View style={styles.header}>
+            {childName && childAge !== null ? (
+              <View style={styles.contextPill}>
+                <Text style={styles.contextPillText}>
+                  🧒 {childName} · Age {childAge}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.title}>{"What's happening\nright now?"}</Text>
+            <Text style={styles.sub}>
               Describe the moment and get calm words to say.
             </Text>
           </View>
 
-          <View style={[styles.formCard, isWide ? styles.formCardWide : null]}>
-            <Input
-              label="Describe the moment"
-              multiline
-              onChangeText={(value) => {
-                setSituation(value);
-
-                if (errorMessage) {
-                  setErrorMessage('');
-                }
-              }}
-              placeholder="My child is screaming because we have to leave the park."
-              value={situation}
-              hint="You&apos;re not writing a report. A simple snapshot is enough."
-            />
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          </View>
-
-          <View style={styles.buttonWrap}>
-            <Button
-              label={isLoading ? 'Getting Script...' : 'Get Script'}
-              onPress={handleGetScript}
-              disabled={!childName || childAge === null || !situation.trim() || isLoading}
-            />
-          </View>
-
-          <View style={styles.chipSection}>
-            <Text style={styles.chipSectionTitle}>Quick prompts</Text>
-            <View style={styles.chipRow}>
-              {quickSituationPrompts.map((prompt) => (
-                <Chip
-                  key={prompt}
-                  label={prompt}
-                  onPress={() => {
-                    setSituation(prompt);
-                    if (errorMessage) {
-                      setErrorMessage('');
-                    }
-                  }}
-                  selected={situation.trim() === prompt}
-                />
-              ))}
+          {/* No child warning */}
+          {(!childName || childAge === null) ? (
+            <View style={styles.noChildCard}>
+              <Text style={styles.noChildText}>
+                Add a child profile first so Sturdy can tailor the script to the right age.
+              </Text>
+              <Pressable onPress={() => router.push(session ? '/child/new' : '/child-setup')}>
+                <Text style={styles.noChildLink}>Add child →</Text>
+              </Pressable>
             </View>
+          ) : null}
+
+          {/* Textarea */}
+          <View style={styles.textareaWrap}>
+            <TextInput
+              autoFocus={Boolean(childName) && childAge !== null}
+              multiline
+              numberOfLines={5}
+              placeholder="My child is screaming because we have to leave the park."
+              placeholderTextColor="rgba(255,255,255,0.22)"
+              value={situation}
+              onChangeText={v => {
+                setSituation(v);
+                if (error) setError('');
+              }}
+              style={styles.textarea}
+              textAlignVertical="top"
+            />
+            <Text style={styles.textareaHint}>
+              You're not writing a report — a snapshot is enough.
+            </Text>
           </View>
 
-          <View style={styles.secondaryLinksRow}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(session ? '/account' : '/create-account')}
-              style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
-            >
-              <Text style={styles.secondaryLinkText}>{session ? 'Account' : 'Sign In'}</Text>
-            </Pressable>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/saved')}
-              style={({ pressed }) => [styles.secondaryLink, pressed ? styles.secondaryLinkPressed : null]}
-            >
-              <Text style={styles.secondaryLinkText}>Saved Scripts</Text>
-            </Pressable>
-          </View>
+          {/* Get Script CTA */}
+          <Button
+            label={loading ? 'Getting script…' : 'Get Script'}
+            onPress={handleGetScript}
+            variant="amber"
+            loading={loading}
+            disabled={!canSubmit || loading}
+            dark
+          />
+
+          {/* This feels unsafe — always visible */}
+          <Pressable
+            onPress={handleUnsafe}
+            style={({ pressed }) => [styles.unsafeBtn, pressed && { opacity: 0.65 }]}
+          >
+            <Text style={styles.unsafeBtnText}>
+              This feels like an emergency → Get help now
+            </Text>
+          </Pressable>
+
         </ScrollView>
       </KeyboardAvoidingView>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardContent: {
-    flex: 1,
+  root:     { flex: 1, backgroundColor: colors.night },
+  keyboard: { flex: 1 },
+  content: {
+    flexGrow:          1,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.lg,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
-    gap: spacing.lg,
+
+  back:     { alignSelf: 'flex-start', paddingVertical: spacing.xs },
+  backText: { ...type.body, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
+
+  header: { gap: spacing.sm },
+  contextPill: {
+    alignSelf:         'flex-start',
+    backgroundColor:   'rgba(124,154,135,0.15)',
+    borderWidth:       1,
+    borderColor:       'rgba(124,154,135,0.3)',
+    borderRadius:      radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   4,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  header: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  headerWide: {
-    maxWidth: 760,
-  },
+  contextPillText: { ...type.label, color: colors.sage },
+
   title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 36,
-    flexShrink: 1,
+    fontSize:      30,
+    fontWeight:    '800',
+    lineHeight:    36,
+    color:         colors.textInverse,
+    letterSpacing: -0.3,
   },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-    flexShrink: 1,
+  sub: { ...type.body, color: 'rgba(255,255,255,0.5)' },
+
+  noChildCard: {
+    backgroundColor: colors.amberLight,
+    borderRadius:    radius.medium,
+    padding:         spacing.md,
+    gap:             spacing.xs,
+    borderWidth:     1,
+    borderColor:     'rgba(200,136,58,0.25)',
   },
-  formCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow,
+  noChildText: { ...type.bodySmall, color: colors.textSecondary },
+  noChildLink: { ...type.bodySmall, color: colors.amberDark, fontWeight: '700' },
+
+  textareaWrap: { gap: spacing.xs },
+  textarea: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth:     1.5,
+    borderColor:     'rgba(255,255,255,0.1)',
+    borderRadius:    radius.large,
+    padding:         spacing.md,
+    fontSize:        17,
+    color:           colors.textInverse,
+    lineHeight:      26,
+    minHeight:       140,
   },
-  formCardWide: {
-    maxWidth: 760,
-    width: '100%',
-    alignSelf: 'center',
+  textareaHint: {
+    ...type.caption,
+    color:     'rgba(255,255,255,0.25)',
+    fontStyle: 'italic',
   },
-  buttonWrap: {
-    paddingTop: spacing.xs,
-  },
-  chipSection: {
-    gap: spacing.sm,
-  },
-  chipSectionTitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-    textTransform: 'uppercase',
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  secondaryLinksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  secondaryLink: {
+  errorText: { ...type.bodySmall, color: colors.dangerDark },
+
+  // "This feels unsafe" — subdued, always present, non-alarming
+  unsafeBtn: {
+    alignSelf:      'center',
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  secondaryLinkPressed: {
-    opacity: 0.7,
-  },
-  secondaryLinkText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
+  unsafeBtnText: {
+    fontSize:           13,
+    color:              'rgba(255,255,255,0.3)',
+    textAlign:          'center',
     textDecorationLine: 'underline',
-  },
-  errorText: {
-    color: '#B45309',
-    fontSize: 14,
-    lineHeight: 20,
+    fontWeight:         '500',
   },
 });

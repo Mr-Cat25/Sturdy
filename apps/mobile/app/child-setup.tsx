@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -7,213 +7,234 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
-
-import { Button } from '../src/components/ui/Button';
-import { Screen } from '../src/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '../src/components/ui/theme';
+import AsyncStorage        from '@react-native-async-storage/async-storage';
+import { router }          from 'expo-router';
+import { Button }          from '../src/components/ui/Button';
+import { Screen }          from '../src/components/ui/Screen';
+import { useAuth }         from '../src/context/AuthContext';
 import { useChildProfile } from '../src/context/ChildProfileContext';
+import { supabase }        from '../src/lib/supabase';
+import { colors, radius, shadow, spacing, type } from '../src/theme';
 
-const AGE_OPTIONS = Array.from({ length: 16 }, (_, index) => index + 2);
+const AGES   = Array.from({ length: 16 }, (_, i) => i + 2);
+const ITEM_H = 56;
 
 export default function ChildSetupScreen() {
-  const { setDraft } = useChildProfile();
-  const [childName, setChildName] = useState('');
+  const { session }              = useAuth();
+  const { setActiveChild }       = useChildProfile();
+  const [name,    setName]       = useState('');
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saving,  setSaving]     = useState(false);
+  const drumRef                  = useRef<ScrollView>(null);
 
-  const trimmedChildName = childName.trim();
-  const canContinue = trimmedChildName.length > 0 && selectedAge !== null && !isSaving;
+  const canContinue = name.trim().length > 0 && selectedAge !== null;
+
+  const onDrumScroll = (y: number) => {
+    const index   = Math.round(y / ITEM_H);
+    const clamped = Math.max(0, Math.min(index, AGES.length - 1));
+    setSelectedAge(AGES[clamped]);
+  };
 
   const handleContinue = async () => {
-    if (!canContinue) {
-      return;
-    }
-
-    setIsSaving(true);
-
+    if (!canContinue || saving) return;
+    const trimmed = name.trim();
+    setSaving(true);
     try {
-      const guestChild = {
-        name: trimmedChildName,
-        childAge: selectedAge,
-      };
-
-      setDraft({
-        name: trimmedChildName,
-        childAge: selectedAge,
-      });
-
-      await AsyncStorage.setItem('sturdy_guest_child', JSON.stringify(guestChild));
-      await AsyncStorage.setItem('sturdy_welcome_done', 'true');
-    } catch {
-      // Keep the first-time flow resilient even if local storage is unavailable.
-    } finally {
-      setIsSaving(false);
-    }
-
+      if (session) {
+        await supabase.from('child_profiles').insert({
+          user_id:   session.user.id,
+          name:      trimmed,
+          child_age: selectedAge,
+        });
+      } else {
+        await AsyncStorage.setItem(
+          'sturdy_guest_child',
+          JSON.stringify({ name: trimmed, childAge: selectedAge }),
+        );
+      }
+      setActiveChild({ name: trimmed, childAge: selectedAge! });
+    } catch { /* non-fatal — context still set */ }
+    setSaving(false);
     router.replace('/(tabs)');
   };
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>One quick detail before you start</Text>
-        <Text style={styles.title}>Tell us about your child</Text>
-        <Text style={styles.supportLine}>
+      <Text style={styles.orientation}>One quick step before you start</Text>
+
+      <View style={styles.titleBlock}>
+        <Text style={styles.title}>Tell us about{'\n'}your child</Text>
+        <Text style={styles.sub}>
           This helps Sturdy tailor support to your child and their age.
         </Text>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.fieldGroup}>
+      <View style={[styles.card, shadow.md]}>
+
+        {/* Name field */}
+        <View style={styles.field}>
           <Text style={styles.fieldLabel}>Child name</Text>
           <TextInput
+            autoFocus
             autoCapitalize="words"
             autoCorrect={false}
-            onChangeText={setChildName}
-            placeholder="Your child's name"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.textInput}
-            value={childName}
+            placeholder="Olivia"
+            placeholderTextColor={colors.textMuted}
+            value={name}
+            onChangeText={setName}
+            style={styles.nameInput}
           />
         </View>
 
-        <View style={styles.fieldGroup}>
+        {/* Age drum */}
+        <View style={styles.field}>
           <Text style={styles.fieldLabel}>Exact age</Text>
-          <ScrollView
-            horizontal
-            contentContainerStyle={styles.agePicker}
-            showsHorizontalScrollIndicator={false}
-          >
-            {AGE_OPTIONS.map((age) => {
-              const isSelected = selectedAge === age;
-
-              return (
+          <View style={styles.drumWrap}>
+            <View pointerEvents="none" style={styles.rail} />
+            <ScrollView
+              ref={drumRef}
+              showsVerticalScrollIndicator={false}
+              snapToInterval={ITEM_H}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingVertical: ITEM_H * 2 }}
+              onMomentumScrollEnd={e =>
+                onDrumScroll(e.nativeEvent.contentOffset.y)
+              }
+              onScrollEndDrag={e =>
+                onDrumScroll(e.nativeEvent.contentOffset.y)
+              }
+            >
+              {AGES.map(age => (
                 <Pressable
-                  accessibilityRole="button"
                   key={age}
-                  onPress={() => setSelectedAge(age)}
-                  style={({ pressed }) => [
-                    styles.agePill,
-                    isSelected ? styles.agePillSelected : null,
-                    pressed ? styles.agePillPressed : null,
-                  ]}
+                  style={styles.ageItem}
+                  onPress={() => {
+                    setSelectedAge(age);
+                    drumRef.current?.scrollTo({
+                      y:        AGES.indexOf(age) * ITEM_H,
+                      animated: true,
+                    });
+                  }}
                 >
-                  <Text style={[styles.agePillText, isSelected ? styles.agePillTextSelected : null]}>
+                  <Text
+                    style={[
+                      styles.ageText,
+                      selectedAge === age ? styles.ageTextSelected : null,
+                      selectedAge !== null &&
+                      Math.abs(age - selectedAge) === 1
+                        ? styles.ageTextNear
+                        : null,
+                    ]}
+                  >
                     {age}
                   </Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          </View>
+
+          {selectedAge !== null ? (
+            <Text style={styles.ageConfirm}>Age {selectedAge} selected</Text>
+          ) : (
+            <Text style={styles.ageHint}>Scroll to select your child's age</Text>
+          )}
         </View>
+
       </View>
 
-      <View style={styles.ctaBlock}>
-        <Button
-          label={isSaving ? 'Saving...' : 'Continue'}
-          onPress={handleContinue}
-          disabled={!canContinue}
-        />
-        <Text style={styles.reassuranceNote}>You can update this later in Profile.</Text>
-      </View>
+      <Button
+        label={saving ? 'Saving…' : 'Continue'}
+        onPress={handleContinue}
+        disabled={!canContinue || saving}
+        loading={saving}
+      />
+
+      <Text style={styles.reassure}>You can update this anytime in Profile.</Text>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  eyebrow: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 16,
-    letterSpacing: 0.8,
+  orientation: {
+    ...type.label,
+    color:         colors.textMuted,
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop:     spacing.xs,
   },
+
+  titleBlock: { gap: spacing.xs },
   title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '800',
-    lineHeight: 38,
+    fontSize:      32,
+    fontWeight:    '800',
+    lineHeight:    38,
+    color:         colors.text,
+    letterSpacing: -0.4,
   },
-  supportLine: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-    maxWidth: 420,
-  },
+  sub: { ...type.body, color: colors.textSecondary },
+
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.large,
-    padding: spacing.lg,
-    gap: spacing.lg,
-    ...shadow,
+    borderRadius:    radius.large,
+    padding:         spacing.lg,
+    gap:             spacing.xl,
   },
-  fieldGroup: {
-    gap: spacing.xs,
-  },
+  field:      { gap: spacing.sm },
   fieldLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 22,
+    ...type.label,
+    color:         colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  textInput: {
-    minHeight: 54,
-    borderRadius: radius.medium,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    color: colors.text,
-    fontSize: 17,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    lineHeight: 24,
+
+  nameInput: {
+    fontSize:           26,
+    fontWeight:         '400',
+    color:              colors.text,
+    borderBottomWidth:  2,
+    borderBottomColor:  colors.border,
+    paddingVertical:    spacing.xs,
+    paddingHorizontal:  0,
   },
-  agePicker: {
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
+
+  drumWrap: {
+    height:   ITEM_H * 5,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  agePill: {
-    minWidth: 56,
-    minHeight: 56,
-    borderRadius: radius.medium,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
+  rail: {
+    position:          'absolute',
+    top:               '50%',
+    left:              0,
+    right:             0,
+    height:            ITEM_H,
+    marginTop:         -(ITEM_H / 2),
+    borderTopWidth:    1.5,
+    borderBottomWidth: 1.5,
+    borderColor:       colors.border,
+    zIndex:            1,
+  },
+  ageItem: {
+    height:         ITEM_H,
+    alignItems:     'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
   },
-  agePillSelected: {
-    backgroundColor: colors.chipBackground,
-    borderColor: colors.primary,
+  ageText: {
+    fontSize:   22,
+    fontWeight: '400',
+    color:      colors.textMuted,
+    opacity:    0.4,
   },
-  agePillPressed: {
-    opacity: 0.82,
-  },
-  agePillText: {
-    color: colors.textSecondary,
-    fontSize: 16,
+  ageTextNear:     { opacity: 0.65 },
+  ageTextSelected: {
+    fontSize:   28,
     fontWeight: '700',
-    lineHeight: 22,
+    color:      colors.text,
+    opacity:    1,
   },
-  agePillTextSelected: {
-    color: colors.primary,
-  },
-  ctaBlock: {
-    gap: spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  reassuranceNote: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
+
+  ageConfirm: { ...type.caption, color: colors.sage,     fontWeight: '600' },
+  ageHint:    { ...type.caption, color: colors.textMuted },
+
+  reassure: { ...type.caption, color: colors.textMuted, textAlign: 'center' },
 });

@@ -1,122 +1,98 @@
-export const sturdyColors = {
-  warmCoral: '#FF7A7A',
-  softOrange: '#FFB36B',
-  skyBlue: '#6FA8FF',
-  calmBlue: '#5B8CFF',
-  background: '#F5F7FB',
-  cardBackground: '#FFFFFF',
-  softSectionBackground: '#EEF2FA',
-  textPrimary: '#1A1F36',
-  textSecondary: '#5A6475',
-  textMuted: '#8B95A7',
-  success: '#7BCFA6',
-  borderSoft: '#D9E2F2',
-  borderSubtle: '#E6EBF5',
-  white: '#FFFFFF',
+// Sturdy v3 — Design Tokens
+// Single import point: import { colors, spacing, radius, shadow, type } from '../theme';
+
+export { colors } from './colors';
+
+export const spacing = {
+  xxs: 4,
+  xs:  8,
+  sm:  12,
+  md:  16,
+  lg:  24,
+  xl:  32,
+  xxl: 48,
 } as const;
 
-export const sturdySpacing = {
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 40,
+export const radius = {
+  xs:     8,
+  small:  12,
+  medium: 16,
+  large:  20,
+  xl:     28,
+  pill:   999,
 } as const;
 
-export const sturdyRadii = {
-  sm: 14,
-  md: 20,
-  lg: 28,
-  pill: 999,
-} as const;
-
-export const sturdyShadows = {
-  card: {
-    shadowColor: '#24304A',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.08,
-    shadowRadius: 28,
-    elevation: 6,
+export const type = {
+  display: {
+    fontSize:      36,
+    fontWeight:    '800' as const,
+    lineHeight:    42,
+    letterSpacing: -0.5,
   },
-  soft: {
-    shadowColor: '#24304A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    elevation: 3,
+  headline: {
+    fontSize:      28,
+    fontWeight:    '700' as const,
+    lineHeight:    34,
+    letterSpacing: -0.3,
   },
-} as const;
-
-export const sturdyTypography = {
-  h1: {
-    fontSize: 36,
-    fontWeight: '800' as const,
-    lineHeight: 42,
-  },
-  h2: {
-    fontSize: 21,
-    fontWeight: '700' as const,
-    lineHeight: 28,
-  },
-  body: {
-    fontSize: 17,
-    fontWeight: '400' as const,
-    lineHeight: 26,
-  },
-  bodyStrong: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    lineHeight: 24,
-  },
-  caption: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    lineHeight: 18,
-  },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '800' as const,
-    lineHeight: 16,
-    letterSpacing: 1.2,
-  },
-} as const;
-
-export const sturdyComponents = {
-  card: {
-    backgroundColor: sturdyColors.cardBackground,
-    borderColor: sturdyColors.borderSubtle,
-    borderWidth: 1,
-    borderRadius: sturdyRadii.lg,
-  },
-  softCard: {
-    backgroundColor: sturdyColors.softSectionBackground,
-    borderColor: sturdyColors.borderSoft,
-    borderWidth: 1,
-    borderRadius: sturdyRadii.md,
-  },
-  primaryButton: {
-    backgroundColor: sturdyColors.calmBlue,
-    borderRadius: sturdyRadii.md,
-    minHeight: 58,
-    paddingHorizontal: sturdySpacing.lg,
-    paddingVertical: sturdySpacing.sm,
+  title: {
+    fontSize:      22,
+    fontWeight:    '700' as const,
+    lineHeight:    28,
   },
   sectionTitle: {
-    color: sturdyColors.textPrimary,
-    ...sturdyTypography.h2,
+    fontSize:      18,
+    fontWeight:    '600' as const,
+    lineHeight:    24,
   },
-  paragraph: {
-    color: sturdyColors.textSecondary,
-    ...sturdyTypography.body,
+  script: {
+    fontSize:      18,
+    fontWeight:    '600' as const,
+    lineHeight:    28,
+  },
+  body: {
+    fontSize:      16,
+    fontWeight:    '400' as const,
+    lineHeight:    24,
+  },
+  bodySmall: {
+    fontSize:      14,
+    fontWeight:    '400' as const,
+    lineHeight:    20,
+  },
+  label: {
+    fontSize:      11,
+    fontWeight:    '700' as const,
+    lineHeight:    16,
+    letterSpacing: 0.8,
+  },
+  caption: {
+    fontSize:      13,
+    fontWeight:    '400' as const,
+    lineHeight:    18,
   },
 } as const;
 
-export const sturdyTheme = {
-  colors: sturdyColors,
-  spacing: sturdySpacing,
-  radii: sturdyRadii,
-  shadows: sturdyShadows,
-  typography: sturdyTypography,
-  components: sturdyComponents,
+export const shadow = {
+  sm: {
+    shadowColor:   '#1A1814',
+    shadowOffset:  { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius:  8,
+    elevation:     2,
+  },
+  md: {
+    shadowColor:   '#1A1814',
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius:  16,
+    elevation:     3,
+  },
+  lg: {
+    shadowColor:   '#1A1814',
+    shadowOffset:  { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius:  32,
+    elevation:     6,
+  },
 } as const;

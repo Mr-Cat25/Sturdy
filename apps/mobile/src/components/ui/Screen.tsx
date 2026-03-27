@@ -6,73 +6,78 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar }    from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { colors, spacing } from './theme';
+import { colors, spacing } from '../../theme';
 
 type ScreenProps = PropsWithChildren<{
-  footer?: ReactNode;
+  footer?:    ReactNode;
   scrollable?: boolean;
-}>
+  dark?:       boolean;
+}>;
 
-export function Screen({ children, footer, scrollable = true }: ScreenProps) {
+export function Screen({ children, footer, scrollable = true, dark = false }: ScreenProps) {
+  const bg = dark ? colors.night : colors.background;
+
   const content = scrollable ? (
     <ScrollView
-      style={styles.scrollView}
+      style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
-      contentInsetAdjustmentBehavior="always"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={styles.fixedContent}>{children}</View>
+    <View style={styles.fixed}>{children}</View>
   );
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
-      <StatusBar style="dark" />
+    <SafeAreaView edges={['top', 'bottom']} style={[styles.root, { backgroundColor: bg }]}>
+      <StatusBar style={dark ? 'light' : 'dark'} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}
       >
         {content}
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
+        {footer ? (
+          <View style={[
+            styles.footer,
+            {
+              backgroundColor: bg,
+              borderTopColor: dark
+                ? 'rgba(255,255,255,0.06)'
+                : colors.borderSoft,
+            },
+          ]}>
+            {footer}
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboard: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  root:    { flex: 1 },
+  keyboard: { flex: 1 },
+  scroll:  { flex: 1 },
   scrollContent: {
-    flexGrow: 1,
+    flexGrow:          1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.xxl,
+    gap:               spacing.lg,
   },
-  fixedContent: {
-    flex: 1,
+  fixed: {
+    flex:              1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
+    paddingTop:        spacing.md,
   },
   footer: {
-    backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
+    paddingTop:        spacing.sm,
+    paddingBottom:     spacing.md,
+    borderTopWidth:    1,
   },
 });
