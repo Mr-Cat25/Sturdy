@@ -1,20 +1,18 @@
 // supabase/functions/_shared/buildPrompt.ts
-// Phase B — Neurotype prompt blocks prepended before standard prompt.
-// Model reads neurotype block FIRST — it becomes the lens for the whole script.
-// When no neurotype is set, standard prompt runs unchanged.
-// NEVER mention the neurotype label in the output — scripts just feel right.
+// Phase B — Neurotype blocks prepended first.
+// Intensity block injected when intensity >= 4.
+// High intensity = shorter, more direct, no preamble.
 
 type BuildPromptInput = {
-  childName:   string;
-  childAge:    number;
-  message:     string;
-  neurotype?:  string | null;
+  childName:  string;
+  childAge:   number;
+  message:    string;
+  neurotype?: string | null;
+  intensity?: number | null;  // 1–5
 };
 
 // ─────────────────────────────────────────────
-// Neurotype blocks — each is a self-contained
-// instruction set that overrides the standard
-// prompt rules where they conflict.
+// Neurotype blocks
 // ─────────────────────────────────────────────
 
 const NEUROTYPE_BLOCKS: Record<string, string> = {
@@ -75,7 +73,6 @@ This child has PDA (Pathological Demand Avoidance). These rules override the sta
 - Regulate: Remove the demand entirely from this step. No instructions. Pure presence.
 - Connect: Use collaborative, non-directive language. "I wonder if..." or "Maybe we could..."
 - Guide: Offer genuine choices — not fake choices. Both options must be real.
-  Example: "Do you want to walk out, or should I carry you?" — never "Do you want to walk, or do you want trouble?"
 - Never issue direct commands. Demands trigger avoidance — even well-intentioned ones.
 - Depersonalise the requirement. "The rule is we leave at 5" not "You need to leave."
 - Autonomy and control are the child's core need — build every sentence around offering some.
@@ -88,7 +85,6 @@ This child is Twice Exceptional (2e) — high intellectual ability alongside lea
 These rules override the standard writing rules below:
 - Never talk down. Match their intellectual level in language — they will notice if you don't.
 - Regulate: Acknowledge the gap between what they understand and what they feel. Both are real.
-  Example: "You know exactly what's happening, and it still feels overwhelming. That makes sense."
 - Connect: Logical framing with emotional acknowledgment together. Not either/or.
 - Guide: Give the reasoning AND the next step. They need to understand why to cooperate.
 - Never simplify language — simplify the demand, not the words.
@@ -99,6 +95,44 @@ These rules override the standard writing rules below:
 };
 
 // ─────────────────────────────────────────────
+// Intensity block
+// Only injected at intensity 4 or 5.
+// At high intensity the parent needs fewer
+// words, faster — no preamble, no nuance.
+// ─────────────────────────────────────────────
+
+function getIntensityBlock(intensity: number): string | null {
+  if (intensity <= 3) return null;
+
+  if (intensity === 4) {
+    return `
+[INTENSITY CONTEXT — this moment is intense]
+The parent has indicated this is a high-intensity moment (4 out of 5).
+Adjust output as follows:
+- Make every script line shorter than usual. No clauses. No softeners.
+- Regulate and Connect must be immediately usable — no build-up.
+- Guide must be one direct action only.
+- Do not open with a long situation summary — keep it to one short sentence.
+[END INTENSITY CONTEXT]
+`.trim();
+  }
+
+  // intensity === 5
+  return `
+[INTENSITY CONTEXT — this is a crisis-level moment]
+The parent has indicated this is a maximum-intensity moment (5 out of 5).
+This parent may be dysregulated themselves. Adjust output as follows:
+- Every script line must be 6 words or fewer. Absolute maximum 8.
+- Regulate: One sentence. Body action only. Example: "Breathe. Move closer."
+- Connect: One sentence. Feeling name only. No explanation.
+- Guide: One sentence. One action. Example: "We leave now. I'm with you."
+- situation_summary must be one short sentence only.
+- Do not explain. Do not reason. Just give the words.
+[END INTENSITY CONTEXT]
+`.trim();
+}
+
+// ─────────────────────────────────────────────
 // Main prompt builder
 // ─────────────────────────────────────────────
 
@@ -107,14 +141,19 @@ export function buildPrompt({
   childAge,
   message,
   neurotype,
+  intensity,
 }: BuildPromptInput): string {
 
   const neurotypePart = neurotype && NEUROTYPE_BLOCKS[neurotype]
     ? [NEUROTYPE_BLOCKS[neurotype], '']
     : [];
 
+  const intensityBlock = intensity ? getIntensityBlock(intensity) : null;
+  const intensityPart  = intensityBlock ? [intensityBlock, ''] : [];
+
   return [
     ...neurotypePart,
+    ...intensityPart,
     'Sturdy writes calm, practical parenting scripts for real-life moments.',
     '',
     'The goal is to help a parent know what to say next in a hard moment with their child.',
@@ -123,6 +162,7 @@ export function buildPrompt({
     `- Child name: ${childName}`,
     `- Child age: ${childAge}`,
     `- Situation: ${message.trim()}`,
+    intensity ? `- Intensity level: ${intensity} out of 5` : '',
     '',
     'Output must be strict JSON with:',
     '- situation_summary',
@@ -138,7 +178,7 @@ export function buildPrompt({
     '- Prioritize real words a parent can say out loud.',
     '- Keep it concise and practical.',
     '- Do not mention disorders, labels, or neurotypes in your output.',
-    '- Do not reference the neurotype context block in your output.',
+    '- Do not reference the neurotype or intensity context blocks in your output.',
     '',
     'Reasoning:',
     '- Identify the child\'s likely emotion.',
@@ -154,5 +194,5 @@ export function buildPrompt({
     '  "guide": "..."',
     '}',
     'Do not include markdown or extra text.',
-  ].join('\n');
+  ].filter(line => line !== null).join('\n');
 }

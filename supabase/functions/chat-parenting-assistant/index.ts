@@ -1,7 +1,5 @@
 declare const Deno: {
-  env: {
-    get(name: string): string | undefined;
-  };
+  env: { get(name: string): string | undefined; };
 };
 
 // @ts-ignore Remote Deno module import is resolved by the Supabase Edge runtime.
@@ -22,7 +20,8 @@ type RequestBody = {
   message?:         unknown;
   userId?:          unknown;
   childProfileId?:  unknown;
-  neurotype?:       unknown;  // Phase B — optional, premium only
+  neurotype?:       unknown;
+  intensity?:       unknown;  // 1–5
 };
 
 function getCorsHeaders() {
@@ -41,20 +40,24 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function validateInput(body: RequestBody) {
-  const childName      = typeof body.childName      === "string" ? body.childName.trim()      : "";
-  const childAge       = typeof body.childAge       === "number" ? body.childAge               : Number.NaN;
-  const message        = typeof body.message        === "string" ? body.message.trim()         : "";
-  const userId         = typeof body.userId         === "string" ? body.userId                 : null;
-  const childProfileId = typeof body.childProfileId === "string" ? body.childProfileId         : null;
-  const neurotype      = typeof body.neurotype      === "string" ? body.neurotype              : null;
+  const childName      = typeof body.childName      === "string" ? body.childName.trim() : "";
+  const childAge       = typeof body.childAge       === "number" ? body.childAge          : Number.NaN;
+  const message        = typeof body.message        === "string" ? body.message.trim()    : "";
+  const userId         = typeof body.userId         === "string" ? body.userId             : null;
+  const childProfileId = typeof body.childProfileId === "string" ? body.childProfileId    : null;
+  const neurotype      = typeof body.neurotype      === "string" ? body.neurotype          : null;
+  const intensity      = typeof body.intensity      === "number" &&
+                         body.intensity >= 1 && body.intensity <= 5
+                           ? Math.round(body.intensity)
+                           : null;
 
-  if (!childName) throw new Error("childName is required and must be a non-empty string.");
+  if (!childName) throw new Error("childName is required.");
   if (!Number.isFinite(childAge) || childAge < 2 || childAge > 17) {
-    throw new Error("childAge is required and must be a number between 2 and 17.");
+    throw new Error("childAge must be between 2 and 17.");
   }
-  if (!message) throw new Error("message is required and must be a non-empty string.");
+  if (!message) throw new Error("message is required.");
 
-  return { childName, childAge, message, userId, childProfileId, neurotype };
+  return { childName, childAge, message, userId, childProfileId, neurotype, intensity };
 }
 
 async function logSafetyEvent({
@@ -84,15 +87,14 @@ async function logSafetyEvent({
         resolved_with:      crisisType,
       }),
     });
-  } catch {
-    console.warn("[STURDY_SAFETY] Failed to log safety event");
-  }
+  } catch { console.warn("[STURDY_SAFETY] Failed to log safety event"); }
 }
 
 async function logUsageEvent({
-  userId, childProfileId, eventType,
+  userId, childProfileId, eventType, eventMeta,
 }: {
-  userId: string | null; childProfileId: string | null; eventType: string;
+  userId: string | null; childProfileId: string | null;
+  eventType: string; eventMeta: Record<string, unknown>;
 }) {
   if (!SUPABASE_URL || !SUPABASE_KEY || !userId) return;
   try {
@@ -108,12 +110,10 @@ async function logUsageEvent({
         user_id:          userId,
         child_profile_id: childProfileId,
         event_type:       eventType,
-        event_meta:       {},
+        event_meta:       eventMeta,
       }),
     });
-  } catch {
-    console.warn("[STURDY_USAGE] Failed to log usage event");
-  }
+  } catch { console.warn("[STURDY_USAGE] Failed to log usage event"); }
 }
 
 function extractContent(payload: unknown): string {
@@ -133,14 +133,14 @@ function extractContent(payload: unknown): string {
 }
 
 async function generateParentingResponse(prompt: string) {
-  if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY environment variable.");
+  if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
   const controller = new AbortController();
   const timeoutId  = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method:  "POST",
+      method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-      signal:  controller.signal,
+      signal: controller.signal,
       body: JSON.stringify({
         model:       OPENAI_MODEL,
         temperature: 0.4,
@@ -230,20 +230,26 @@ serve(async (req) => {
 
   // ── Safe: generate script
   try {
-    // Phase B — neurotype passed into buildPrompt
     const prompt = buildPrompt({
-      childName:  input.childName,
-      childAge:   input.childAge,
-      message:    input.message,
-      neurotype:  input.neurotype,  // null for free users, string for premium
+      childName: input.childName,
+      childAge:  input.childAge,
+      message:   input.message,
+      neurotype: input.neurotype,
+      intensity: input.intensity,
     });
 
     const result = await generateParentingResponse(prompt);
 
+    // Log usage — include intensity in metadata for future analytics
     logUsageEvent({
       userId:         input.userId,
       childProfileId: input.childProfileId,
       eventType:      "script_generated",
+      eventMeta: {
+        intensity:  input.intensity,
+        neurotype:  input.neurotype,
+        child_age:  input.childAge,
+      },
     });
 
     return jsonResponse({ response_type: "normal", ...result as object }, 200);

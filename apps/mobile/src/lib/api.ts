@@ -1,12 +1,10 @@
 // apps/mobile/src/lib/api.ts
-// Updated for Phase A — handles crisis response_type from Edge Function
-
 import type { ParentingScriptRequest, ParentingScriptResponse } from '../types/parentingScript';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 
 if (!SUPABASE_URL) {
-  throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL. Add it to your Expo environment configuration.');
+  throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL.');
 }
 
 const PARENTING_SCRIPT_URL = `${SUPABASE_URL}/functions/v1/chat-parenting-assistant`;
@@ -16,15 +14,9 @@ const PARENTING_SCRIPT_HEADERS = {
   Authorization:  `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'dev-local'}`,
 } as const;
 
-// ─────────────────────────────────────────────
-// Crisis error — thrown when safety filter
-// triggers. Carries crisis type for routing.
-// ─────────────────────────────────────────────
-
 export class CrisisDetectedError extends Error {
   readonly crisisType: string;
   readonly riskLevel:  string;
-
   constructor(crisisType: string, riskLevel: string) {
     super('crisis-detected');
     this.name       = 'CrisisDetectedError';
@@ -33,27 +25,10 @@ export class CrisisDetectedError extends Error {
   }
 }
 
-// ─────────────────────────────────────────────
-// Extended request — includes user context
-// for safety event logging
-// ─────────────────────────────────────────────
-
-type ExtendedRequest = ParentingScriptRequest & {
-  userId?:         string;
-  childProfileId?: string;
-};
-
-// ─────────────────────────────────────────────
-// Main API call
-// ─────────────────────────────────────────────
-
 export async function getParentingScript(
-  input: ExtendedRequest,
+  input: ParentingScriptRequest,
 ): Promise<ParentingScriptResponse> {
   let response: Response;
-
-  console.log('[STURDY_DEBUG] Request URL', PARENTING_SCRIPT_URL);
-  console.log('[STURDY_DEBUG] Payload', { ...input, message: input.message.slice(0, 50) + '…' });
 
   try {
     response = await fetch(PARENTING_SCRIPT_URL, {
@@ -61,64 +36,36 @@ export async function getParentingScript(
       headers: PARENTING_SCRIPT_HEADERS,
       body:    JSON.stringify(input),
     });
-  } catch (error) {
-    console.log('[STURDY_DEBUG] Fetch failed', {
-      error: error instanceof Error ? error.message : 'unknown-error',
-    });
+  } catch {
     throw new Error('network-error');
   }
 
-  console.log('[STURDY_DEBUG] Response status', response.status);
-
   let data: unknown = null;
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
+  try { data = await response.json(); } catch { data = null; }
 
   if (!response.ok) {
     const errorMessage =
-      typeof data === 'object' &&
-      data !== null &&
-      'error' in data &&
+      typeof data === 'object' && data !== null && 'error' in data &&
       typeof (data as { error: unknown }).error === 'string'
         ? (data as { error: string }).error
         : 'request-failed';
     throw new Error(errorMessage);
   }
 
-  // ─────────────────────────────────────────
-  // Check for crisis response
-  // Safety filter triggered — throw CrisisDetectedError
-  // so the calling screen can route to /crisis
-  // ─────────────────────────────────────────
-
+  // Crisis response
   if (
-    typeof data === 'object' &&
-    data !== null &&
+    typeof data === 'object' && data !== null &&
     'response_type' in data &&
     (data as { response_type: unknown }).response_type === 'crisis'
   ) {
-    const crisis = data as {
-      crisis_type?: string;
-      risk_level?:  string;
-    };
-
+    const crisis = data as { crisis_type?: string; risk_level?: string };
     throw new CrisisDetectedError(
       crisis.crisis_type ?? 'unknown',
       crisis.risk_level  ?? 'ELEVATED_RISK',
     );
   }
 
-  // ─────────────────────────────────────────
-  // Normal response — validate shape
-  // ─────────────────────────────────────────
-
-  if (!isParentingScriptResponse(data)) {
-    throw new Error('invalid-response');
-  }
-
+  if (!isParentingScriptResponse(data)) throw new Error('invalid-response');
   return data;
 }
 
@@ -132,3 +79,4 @@ function isParentingScriptResponse(value: unknown): value is ParentingScriptResp
     typeof c.guide             === 'string'
   );
 }
+

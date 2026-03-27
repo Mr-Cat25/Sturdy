@@ -1,6 +1,7 @@
-// app/now.tsx — Phase B update
-// Shows neurotype pill above textarea when set (premium users)
-// Passes neurotype to getParentingScript — silent, parent never sees it change
+// app/now.tsx — Intensity indicator added
+// Five tap targets above Get Script button.
+// Optional — doesn't block the script.
+// Feeds prompt context + usage_events metadata.
 
 import { useEffect, useState } from 'react';
 import {
@@ -22,7 +23,7 @@ import { useChildProfile }    from '../src/context/ChildProfileContext';
 import { getParentingScript, CrisisDetectedError } from '../src/lib/api';
 import { colors, radius, spacing, type } from '../src/theme';
 
-// Neurotype display config
+// Neurotype display labels
 const NEUROTYPE_LABELS: Record<string, string> = {
   ADHD:    'ADHD',
   Autism:  'Autism',
@@ -32,6 +33,15 @@ const NEUROTYPE_LABELS: Record<string, string> = {
   '2e':    'Twice Exceptional',
 };
 
+// Intensity config — 5 levels
+const INTENSITY_CONFIG = [
+  { level: 1, size: 20, label: 'Mild',        color: '#7C9A87' }, // sage
+  { level: 2, size: 24, label: 'Building',    color: '#8FA8BC' }, // mid slate
+  { level: 3, size: 28, label: 'Hard',        color: '#3C5A73' }, // slate
+  { level: 4, size: 32, label: 'Very hard',   color: '#C8883A' }, // amber
+  { level: 5, size: 38, label: 'Overwhelming',color: '#C98B6B' }, // danger warm
+] as const;
+
 export default function NowScreen() {
   const navigation = useRouter();
   const params     = useLocalSearchParams<{ reset?: string }>();
@@ -39,14 +49,15 @@ export default function NowScreen() {
   const { activeChild } = useChildProfile();
 
   const [situation, setSituation] = useState('');
+  const [intensity, setIntensity] = useState<number | null>(null);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
 
-  const childName  = activeChild?.name      ?? null;
-  const childAge   = activeChild?.childAge  ?? null;
-  const childId    = activeChild?.id        ?? undefined;
-  const neurotype  = activeChild?.neurotype ?? null;
-  const userId     = session?.user?.id      ?? undefined;
+  const childName = activeChild?.name      ?? null;
+  const childAge  = activeChild?.childAge  ?? null;
+  const childId   = activeChild?.id        ?? undefined;
+  const neurotype = activeChild?.neurotype ?? null;
+  const userId    = session?.user?.id      ?? undefined;
 
   const reset     = Array.isArray(params.reset) ? params.reset[0] : params.reset;
   const canSubmit = Boolean(childName) && childAge !== null && situation.trim().length > 0;
@@ -54,6 +65,7 @@ export default function NowScreen() {
   useEffect(() => {
     if (!reset) return;
     setSituation('');
+    setIntensity(null);
     setError('');
   }, [reset]);
 
@@ -70,7 +82,8 @@ export default function NowScreen() {
         message:        msg,
         userId,
         childProfileId: childId,
-        neurotype,      // Phase B — null for free, string for premium
+        neurotype,
+        intensity,      // null if not selected — always optional
       });
 
       navigation.push({
@@ -103,6 +116,8 @@ export default function NowScreen() {
     });
   };
 
+  const selectedIntensityConfig = INTENSITY_CONFIG.find(c => c.level === intensity);
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="light" />
@@ -116,6 +131,7 @@ export default function NowScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Back */}
           <Pressable
             onPress={() => router.back()}
             style={({ pressed }) => [styles.back, pressed && { opacity: 0.65 }]}
@@ -123,6 +139,7 @@ export default function NowScreen() {
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
 
+          {/* Header */}
           <View style={styles.header}>
             {/* Child context pill */}
             {childName && childAge !== null ? (
@@ -133,7 +150,7 @@ export default function NowScreen() {
               </View>
             ) : null}
 
-            {/* Neurotype pill — premium users only, shown above textarea */}
+            {/* Neurotype pill — premium users */}
             {neurotype && NEUROTYPE_LABELS[neurotype] ? (
               <View style={styles.neurotypePill}>
                 <View style={styles.neurotypeDot} />
@@ -149,10 +166,11 @@ export default function NowScreen() {
             </Text>
           </View>
 
+          {/* No child warning */}
           {(!childName || childAge === null) ? (
             <View style={styles.noChildCard}>
               <Text style={styles.noChildText}>
-                Add a child profile first so Sturdy can tailor the script to the right age.
+                Add a child profile first so Sturdy can tailor the script.
               </Text>
               <Pressable onPress={() => router.push(session ? '/child/new' : '/child-setup')}>
                 <Text style={styles.noChildLink}>Add child →</Text>
@@ -160,6 +178,7 @@ export default function NowScreen() {
             </View>
           ) : null}
 
+          {/* Textarea */}
           <View style={styles.textareaWrap}>
             <TextInput
               autoFocus={Boolean(childName) && childAge !== null}
@@ -173,12 +192,64 @@ export default function NowScreen() {
               textAlignVertical="top"
             />
             <Text style={styles.textareaHint}>
-              You're not writing a report — a snapshot is enough.
+              A simple snapshot is enough.
             </Text>
+          </View>
+
+          {/* ── Intensity indicator ── */}
+          <View style={styles.intensityWrap}>
+            <Text style={styles.intensityLabel}>
+              How intense is this moment?{' '}
+              <Text style={styles.intensityOptional}>(optional)</Text>
+            </Text>
+
+            <View style={styles.intensityRow}>
+              {INTENSITY_CONFIG.map(cfg => {
+                const isSelected = intensity === cfg.level;
+                return (
+                  <Pressable
+                    key={cfg.level}
+                    onPress={() => setIntensity(isSelected ? null : cfg.level)}
+                    style={styles.intensityTapTarget}
+                    accessibilityLabel={`Intensity ${cfg.level} — ${cfg.label}`}
+                    accessibilityRole="button"
+                  >
+                    <View
+                      style={[
+                        styles.intensityCircle,
+                        {
+                          width:           cfg.size,
+                          height:          cfg.size,
+                          borderRadius:    cfg.size / 2,
+                          backgroundColor: isSelected
+                            ? cfg.color
+                            : 'rgba(255,255,255,0.08)',
+                          borderColor:     isSelected
+                            ? cfg.color
+                            : 'rgba(255,255,255,0.12)',
+                        },
+                      ]}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Intensity label — shows selected level */}
+            {selectedIntensityConfig ? (
+              <Text style={[styles.intensitySelected, { color: selectedIntensityConfig.color }]}>
+                {selectedIntensityConfig.level} · {selectedIntensityConfig.label}
+              </Text>
+            ) : (
+              <Text style={styles.intensityHint}>
+                Tap a circle — helps Sturdy match the urgency
+              </Text>
+            )}
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
+          {/* CTA */}
           <Button
             label={loading ? 'Getting script…' : 'Get Script'}
             onPress={handleGetScript}
@@ -188,6 +259,7 @@ export default function NowScreen() {
             dark
           />
 
+          {/* This feels unsafe */}
           <Pressable
             onPress={handleUnsafe}
             style={({ pressed }) => [styles.unsafeBtn, pressed && { opacity: 0.65 }]}
@@ -230,7 +302,6 @@ const styles = StyleSheet.create({
   },
   contextPillText: { ...type.label, color: colors.sage },
 
-  // Neurotype pill — amber tint, subtle
   neurotypePill: {
     alignSelf:         'flex-start',
     backgroundColor:   'rgba(200,136,58,0.12)',
@@ -244,9 +315,7 @@ const styles = StyleSheet.create({
     gap:               5,
   },
   neurotypeDot: {
-    width:           5,
-    height:          5,
-    borderRadius:    radius.pill,
+    width: 5, height: 5, borderRadius: radius.pill,
     backgroundColor: colors.amber,
   },
   neurotypePillText: { ...type.label, color: colors.amber },
@@ -288,6 +357,49 @@ const styles = StyleSheet.create({
     color:     'rgba(255,255,255,0.25)',
     fontStyle: 'italic',
   },
+
+  // ── Intensity indicator
+  intensityWrap: {
+    gap: spacing.sm,
+  },
+  intensityLabel: {
+    ...type.label,
+    color:         'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  intensityOptional: {
+    fontSize:      10,
+    fontWeight:    '400',
+    color:         'rgba(255,255,255,0.2)',
+    textTransform: 'none',
+  },
+  intensityRow: {
+    flexDirection:  'row',
+    alignItems:     'flex-end',  // circles grow upward
+    gap:            spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  intensityTapTarget: {
+    alignItems:     'center',
+    justifyContent: 'flex-end',
+    height:         44,          // consistent tap target
+    flex:           1,
+  },
+  intensityCircle: {
+    borderWidth: 1.5,
+  },
+  intensitySelected: {
+    fontSize:   12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  intensityHint: {
+    ...type.caption,
+    color:     'rgba(255,255,255,0.2)',
+    fontStyle: 'italic',
+  },
+
   errorText: { ...type.bodySmall, color: colors.dangerDark },
 
   unsafeBtn: {
