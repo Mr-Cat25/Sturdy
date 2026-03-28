@@ -15,13 +15,12 @@ const SUPABASE_URL   = Deno.env.get("SUPABASE_URL");
 const SUPABASE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 type RequestBody = {
-  childName?:       unknown;
-  childAge?:        unknown;
-  message?:         unknown;
-  userId?:          unknown;
-  childProfileId?:  unknown;
-  neurotype?:       unknown;
-  intensity?:       unknown;  // 1–5
+  childName?:      unknown;
+  childAge?:       unknown;
+  message?:        unknown;
+  userId?:         unknown;
+  childProfileId?: unknown;
+  intensity?:      unknown;
 };
 
 function getCorsHeaders() {
@@ -40,16 +39,14 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function validateInput(body: RequestBody) {
-  const childName      = typeof body.childName      === "string" ? body.childName.trim() : "";
-  const childAge       = typeof body.childAge       === "number" ? body.childAge          : Number.NaN;
-  const message        = typeof body.message        === "string" ? body.message.trim()    : "";
-  const userId         = typeof body.userId         === "string" ? body.userId             : null;
-  const childProfileId = typeof body.childProfileId === "string" ? body.childProfileId    : null;
-  const neurotype      = typeof body.neurotype      === "string" ? body.neurotype          : null;
-  const intensity      = typeof body.intensity      === "number" &&
+  const childName      = typeof body.childName === "string" ? body.childName.trim() : "";
+  const childAge       = typeof body.childAge  === "number" ? body.childAge          : Number.NaN;
+  const message        = typeof body.message   === "string" ? body.message.trim()    : "";
+  const userId         = typeof body.userId    === "string" ? body.userId             : null;
+  const childProfileId = typeof body.childProfileId === "string" ? body.childProfileId : null;
+  const intensity      = typeof body.intensity === "number" &&
                          body.intensity >= 1 && body.intensity <= 5
-                           ? Math.round(body.intensity)
-                           : null;
+                           ? Math.round(body.intensity) : null;
 
   if (!childName) throw new Error("childName is required.");
   if (!Number.isFinite(childAge) || childAge < 2 || childAge > 17) {
@@ -57,12 +54,10 @@ function validateInput(body: RequestBody) {
   }
   if (!message) throw new Error("message is required.");
 
-  return { childName, childAge, message, userId, childProfileId, neurotype, intensity };
+  return { childName, childAge, message, userId, childProfileId, intensity };
 }
 
-async function logSafetyEvent({
-  userId, childProfileId, messageExcerpt, riskLevel, policyRoute, crisisType,
-}: {
+async function logSafetyEvent(data: {
   userId: string | null; childProfileId: string | null;
   messageExcerpt: string; riskLevel: string;
   policyRoute: string; crisisType: string | null;
@@ -78,25 +73,23 @@ async function logSafetyEvent({
         "Prefer": "return=minimal",
       },
       body: JSON.stringify({
-        user_id:            userId,
-        child_profile_id:   childProfileId,
-        message_excerpt:    messageExcerpt.slice(0, 120),
-        risk_level:         riskLevel,
-        policy_route:       policyRoute,
+        user_id:            data.userId,
+        child_profile_id:   data.childProfileId,
+        message_excerpt:    data.messageExcerpt.slice(0, 120),
+        risk_level:         data.riskLevel,
+        policy_route:       data.policyRoute,
         classifier_version: "v1-keyword",
-        resolved_with:      crisisType,
+        resolved_with:      data.crisisType,
       }),
     });
-  } catch { console.warn("[STURDY_SAFETY] Failed to log safety event"); }
+  } catch { console.warn("[STURDY_SAFETY] Failed to log"); }
 }
 
-async function logUsageEvent({
-  userId, childProfileId, eventType, eventMeta,
-}: {
+async function logUsageEvent(data: {
   userId: string | null; childProfileId: string | null;
   eventType: string; eventMeta: Record<string, unknown>;
 }) {
-  if (!SUPABASE_URL || !SUPABASE_KEY || !userId) return;
+  if (!SUPABASE_URL || !SUPABASE_KEY || !data.userId) return;
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/usage_events`, {
       method: "POST",
@@ -107,84 +100,122 @@ async function logUsageEvent({
         "Prefer": "return=minimal",
       },
       body: JSON.stringify({
-        user_id:          userId,
-        child_profile_id: childProfileId,
-        event_type:       eventType,
-        event_meta:       eventMeta,
+        user_id:          data.userId,
+        child_profile_id: data.childProfileId,
+        event_type:       data.eventType,
+        event_meta:       data.eventMeta,
       }),
     });
-  } catch { console.warn("[STURDY_USAGE] Failed to log usage event"); }
+  } catch { console.warn("[STURDY_USAGE] Failed to log"); }
 }
 
 function extractContent(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
-    throw new Error("OpenAI returned an invalid response payload.");
+    throw new Error("OpenAI returned an invalid payload.");
   }
-  const choices = (payload as { choices?: Array<{ message?: { content?: unknown } }> }).choices;
+  const choices = (payload as {
+    choices?: Array<{ message?: { content?: unknown } }>;
+  }).choices;
   const content = choices?.[0]?.message?.content;
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     const text = content
-      .map(item => (item && typeof item === "object" && "text" in item && typeof item.text === "string") ? item.text : "")
+      .map(i => (i && typeof i === "object" && "text" in i && typeof i.text === "string") ? i.text : "")
       .join("").trim();
     if (text) return text;
   }
-  throw new Error("OpenAI response did not include message content.");
+  throw new Error("No content in OpenAI response.");
 }
 
-async function generateParentingResponse(prompt: string) {
+async function generateScript(prompt: string) {
   if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
+
   const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 15000);
+  const timeoutId  = setTimeout(() => controller.abort(), 20000);
+
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-      signal: controller.signal,
+      signal:  controller.signal,
       body: JSON.stringify({
         model:       OPENAI_MODEL,
-        temperature: 0.4,
+        temperature: 0.5,
         messages: [
           {
             role:    "system",
-            content: "You are Sturdy, a calm parenting guide. You help parents know what to say next in hard moments. Return strict JSON only.",
+            content: "You are Sturdy. You write calm, human-sounding parenting scripts. You return strict JSON only — no markdown, no explanation.",
           },
           { role: "user", content: prompt },
         ],
         response_format: {
           type: "json_schema",
           json_schema: {
-            name:   "sturdy_parenting_response",
+            name:   "sturdy_script",
             schema: {
-              type: "object", additionalProperties: false,
-              required: ["situation_summary", "regulate", "connect", "guide"],
+              type:                 "object",
+              additionalProperties: false,
+              required:             ["situation_summary", "regulate", "connect", "guide", "avoid"],
               properties: {
                 situation_summary: { type: "string" },
-                regulate:          { type: "string" },
-                connect:           { type: "string" },
-                guide:             { type: "string" },
+                regulate: {
+                  type:                 "object",
+                  additionalProperties: false,
+                  required:             ["parent_action", "script"],
+                  properties: {
+                    parent_action: { type: "string" },
+                    script:        { type: "string" },
+                  },
+                },
+                connect: {
+                  type:                 "object",
+                  additionalProperties: false,
+                  required:             ["parent_action", "script"],
+                  properties: {
+                    parent_action: { type: "string" },
+                    script:        { type: "string" },
+                  },
+                },
+                guide: {
+                  type:                 "object",
+                  additionalProperties: false,
+                  required:             ["parent_action", "script"],
+                  properties: {
+                    parent_action: { type: "string" },
+                    script:        { type: "string" },
+                  },
+                },
+                avoid: {
+                  type:  "array",
+                  items: { type: "string" },
+                },
               },
             },
           },
         },
       }),
     });
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+      const err = await response.text();
+      throw new Error(`OpenAI error: ${response.status} ${err}`);
     }
+
     const payload = await response.json();
     const content = extractContent(payload);
+
     let parsed: unknown;
-    try { parsed = JSON.parse(content); } catch { throw new Error("Model returned invalid JSON."); }
-    if (!validateResponse(parsed)) throw new Error("Model returned an invalid response shape.");
+    try { parsed = JSON.parse(content); }
+    catch { throw new Error("Invalid JSON from model."); }
+
+    if (!validateResponse(parsed)) throw new Error("Invalid response shape.");
     return parsed;
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-// @ts-ignore Preserve the requested handler signature.
+// @ts-ignore
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -200,25 +231,19 @@ serve(async (req) => {
 
   let body: RequestBody;
   try { body = await req.json(); }
-  catch { return jsonResponse({ error: "Request body must be valid JSON." }, 400); }
+  catch { return jsonResponse({ error: "Invalid JSON." }, 400); }
 
   let input;
   try { input = validateInput(body); }
-  catch (error) {
-    return jsonResponse({ error: error instanceof Error ? error.message : "Invalid request." }, 400);
-  }
+  catch (e) { return jsonResponse({ error: e instanceof Error ? e.message : "Invalid request." }, 400); }
 
-  // ── Layer 1: Safety filter
+  // ── Safety filter
   const safety = runSafetyFilter(input.message);
   if (!safety.isSafe) {
-    console.log("[STURDY_SAFETY] Triggered:", safety.riskLevel, safety.crisisType);
     logSafetyEvent({
-      userId:         input.userId,
-      childProfileId: input.childProfileId,
-      messageExcerpt: input.message,
-      riskLevel:      safety.riskLevel,
-      policyRoute:    safety.policyRoute,
-      crisisType:     safety.crisisType,
+      userId: input.userId, childProfileId: input.childProfileId,
+      messageExcerpt: input.message, riskLevel: safety.riskLevel,
+      policyRoute: safety.policyRoute, crisisType: safety.crisisType,
     });
     return jsonResponse({
       response_type: "crisis",
@@ -228,34 +253,28 @@ serve(async (req) => {
     }, 200);
   }
 
-  // ── Safe: generate script
+  // ── Generate
   try {
     const prompt = buildPrompt({
       childName: input.childName,
       childAge:  input.childAge,
       message:   input.message,
-      neurotype: input.neurotype,
       intensity: input.intensity,
     });
 
-    const result = await generateParentingResponse(prompt);
+    const result = await generateScript(prompt);
 
-    // Log usage — include intensity in metadata for future analytics
     logUsageEvent({
-      userId:         input.userId,
-      childProfileId: input.childProfileId,
-      eventType:      "script_generated",
-      eventMeta: {
-        intensity:  input.intensity,
-        neurotype:  input.neurotype,
-        child_age:  input.childAge,
-      },
+      userId: input.userId, childProfileId: input.childProfileId,
+      eventType: "script_generated",
+      eventMeta: { intensity: input.intensity, child_age: input.childAge },
     });
 
     return jsonResponse({ response_type: "normal", ...result as object }, 200);
-  } catch (error) {
-    console.error("[STURDY_ERROR]", error);
-    return jsonResponse({ error: "We couldn't generate a script right now." }, 500);
+  } catch (err) {
+    console.error("[STURDY_ERROR]", err);
+    return jsonResponse({ error: "Couldn't generate a script right now." }, 500);
   }
 });
+
 
