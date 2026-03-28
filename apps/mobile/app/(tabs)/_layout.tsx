@@ -1,5 +1,6 @@
-// app/(tabs)/_layout.tsx — Fixed SOS sheet router params
-// regulate/connect/guide passed as flat strings (action + script separately)
+// app/(tabs)/_layout.tsx
+// 3-tab layout: Dashboard | SOS (centre pulse modal) | Settings
+// SOS sheet: ScrollView wraps content, flat params passed to result screen
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -8,6 +9,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -31,14 +33,14 @@ const INTENSITY_CONFIG = [
 const CRISIS_KEYWORDS = [
   'hurt','hit','kill','die','dead','suicide','not breathing',
   'unconscious','bleeding','seizure','choke','knife','gun',
-  'lose it','losing it','can\'t control','self harm','cutting',
+  'lose it','losing it',"can't control",'self harm','cutting',
 ];
+
 function hasCrisisKeyword(text: string): boolean {
   const lower = text.toLowerCase();
   return CRISIS_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-// ── SOS Modal Sheet
 function SOSSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { session }     = useAuth();
   const { activeChild } = useChildProfile();
@@ -47,7 +49,6 @@ function SOSSheet({ visible, onClose }: { visible: boolean; onClose: () => void 
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const [crisis,    setCrisis]    = useState(false);
-
   const crisisOpacity = useRef(new Animated.Value(0)).current;
 
   const childName = activeChild?.name     ?? null;
@@ -70,9 +71,7 @@ function SOSSheet({ visible, onClose }: { visible: boolean; onClose: () => void 
     const detected = hasCrisisKeyword(text);
     if (detected !== crisis) {
       setCrisis(detected);
-      Animated.timing(crisisOpacity, {
-        toValue: detected ? 1 : 0, duration: 300, useNativeDriver: true,
-      }).start();
+      Animated.timing(crisisOpacity, { toValue: detected ? 1 : 0, duration: 300, useNativeDriver: true }).start();
     }
   };
 
@@ -86,7 +85,6 @@ function SOSSheet({ visible, onClose }: { visible: boolean; onClose: () => void 
         userId, childProfileId: childId, intensity,
       });
       onClose();
-      // ── Pass as flat string params — ScriptStep objects can't go through router
       router.push({
         pathname: '/result',
         params: {
@@ -103,10 +101,7 @@ function SOSSheet({ visible, onClose }: { visible: boolean; onClose: () => void 
     } catch (err) {
       if (err instanceof CrisisDetectedError) {
         onClose();
-        router.push({
-          pathname: '/crisis',
-          params: { crisisType: err.crisisType, riskLevel: err.riskLevel },
-        });
+        router.push({ pathname: '/crisis', params: { crisisType: err.crisisType, riskLevel: err.riskLevel } });
         return;
       }
       setError("Couldn't get a script right now. Please try again.");
@@ -119,116 +114,113 @@ function SOSSheet({ visible, onClose }: { visible: boolean; onClose: () => void 
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={sheet.overlay} onPress={onClose} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={sheet.keyboard}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={sheet.keyboard}>
         <View style={sheet.root}>
           <View style={sheet.handle} />
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={sheet.scrollContent}
+          >
+            {/* Header */}
+            <View style={sheet.header}>
+              {childName && childAge !== null ? (
+                <View style={sheet.contextPill}>
+                  <Text style={sheet.contextPillText}>🧒 {childName} · Age {childAge}</Text>
+                </View>
+              ) : null}
+              <Text style={sheet.title}>{"What's happening\nright now?"}</Text>
+              <Text style={sheet.sub}>Describe the moment and get calm words to say.</Text>
+            </View>
 
-          <View style={sheet.header}>
-            {childName && childAge !== null ? (
-              <View style={sheet.contextPill}>
-                <Text style={sheet.contextPillText}>🧒 {childName} · Age {childAge}</Text>
+            {/* No child */}
+            {(!childName || childAge === null) ? (
+              <View style={sheet.noChild}>
+                <Text style={sheet.noChildText}>Add a child profile so Sturdy can tailor the script.</Text>
+                <Pressable onPress={() => { onClose(); router.push(session ? '/child/new' : '/child-setup'); }}>
+                  <Text style={sheet.noChildLink}>Add child →</Text>
+                </Pressable>
               </View>
             ) : null}
-            <Text style={sheet.title}>{"What's happening\nright now?"}</Text>
-            <Text style={sheet.sub}>Describe the moment and get calm words to say.</Text>
-          </View>
 
-          {(!childName || childAge === null) ? (
-            <View style={sheet.noChild}>
-              <Text style={sheet.noChildText}>
-                Add a child profile first so Sturdy can tailor the script.
+            {/* Textarea */}
+            <View style={sheet.textareaCard}>
+              <TextInput
+                autoFocus={Boolean(childName) && childAge !== null}
+                multiline
+                numberOfLines={4}
+                placeholder="My child is screaming because we have to leave the park."
+                placeholderTextColor="rgba(255,255,255,0.22)"
+                value={situation}
+                onChangeText={handleTextChange}
+                style={sheet.textarea}
+                textAlignVertical="top"
+              />
+              <Text style={sheet.textareaHint}>A simple snapshot is enough.</Text>
+              <Animated.View style={[sheet.crisisBanner, { opacity: crisisOpacity }]}>
+                <Pressable onPress={handleUnsafe} style={sheet.crisisBannerInner}>
+                  <Text style={sheet.crisisIcon}>⚠️</Text>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={sheet.crisisTitle}>This sounds serious</Text>
+                    <Text style={sheet.crisisSub}>Tap here if you need immediate help →</Text>
+                  </View>
+                </Pressable>
+              </Animated.View>
+            </View>
+
+            {/* Intensity */}
+            <View style={sheet.intensityWrap}>
+              <Text style={sheet.intensityLabel}>
+                Intensity <Text style={sheet.intensityOpt}>(optional)</Text>
               </Text>
-              <Pressable onPress={() => { onClose(); router.push(session ? '/child/new' : '/child-setup'); }}>
-                <Text style={sheet.noChildLink}>Add child →</Text>
-              </Pressable>
+              <View style={sheet.intensityCircles}>
+                {INTENSITY_CONFIG.map(cfg => {
+                  const sel = intensity === cfg.level;
+                  return (
+                    <Pressable
+                      key={cfg.level}
+                      onPress={() => setIntensity(sel ? null : cfg.level)}
+                      style={sheet.intensityTap}
+                    >
+                      <View style={[
+                        sheet.intensityCircle,
+                        {
+                          width:           cfg.size,
+                          height:          cfg.size,
+                          borderRadius:    cfg.size / 2,
+                          backgroundColor: sel ? cfg.color : 'rgba(255,255,255,0.08)',
+                          borderColor:     sel ? cfg.color : 'rgba(255,255,255,0.12)',
+                        },
+                      ]} />
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          ) : null}
 
-          <View style={sheet.textareaCard}>
-            <TextInput
-              autoFocus={Boolean(childName) && childAge !== null}
-              multiline
-              numberOfLines={4}
-              placeholder="My child is screaming because we have to leave the park."
-              placeholderTextColor="rgba(255,255,255,0.22)"
-              value={situation}
-              onChangeText={handleTextChange}
-              style={sheet.textarea}
-              textAlignVertical="top"
+            {error ? <Text style={sheet.error}>{error}</Text> : null}
+
+            <Button
+              label={loading ? 'Getting script…' : 'Get Script'}
+              onPress={handleGetScript}
+              variant="amber"
+              loading={loading}
+              disabled={!canSubmit || loading}
+              dark
             />
-            <Text style={sheet.textareaHint}>A simple snapshot is enough.</Text>
-            <Animated.View style={[sheet.crisisBanner, { opacity: crisisOpacity }]}>
-              <Pressable onPress={handleUnsafe} style={sheet.crisisBannerInner}>
-                <Text style={sheet.crisisIcon}>⚠️</Text>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={sheet.crisisTitle}>This sounds serious</Text>
-                  <Text style={sheet.crisisSub}>Tap here if you need immediate help →</Text>
-                </View>
-              </Pressable>
-            </Animated.View>
-          </View>
 
-          <View style={sheet.intensityRow}>
-            <Text style={sheet.intensityLabel}>
-              Intensity <Text style={sheet.intensityOpt}>(optional)</Text>
-            </Text>
-            <View style={sheet.intensityCircles}>
-              {INTENSITY_CONFIG.map(cfg => {
-                const sel = intensity === cfg.level;
-                return (
-                  <Pressable
-                    key={cfg.level}
-                    onPress={() => setIntensity(sel ? null : cfg.level)}
-                    style={sheet.intensityTap}
-                  >
-                    <View style={[
-                      sheet.intensityCircle,
-                      {
-                        width: cfg.size, height: cfg.size,
-                        borderRadius: cfg.size / 2,
-                        backgroundColor: sel ? cfg.color : 'rgba(255,255,255,0.08)',
-                        borderColor:     sel ? cfg.color : 'rgba(255,255,255,0.12)',
-                      },
-                    ]} />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {error ? <Text style={sheet.error}>{error}</Text> : null}
-
-          <Button
-            label={loading ? 'Getting script…' : 'Get Script'}
-            onPress={handleGetScript}
-            variant="amber"
-            loading={loading}
-            disabled={!canSubmit || loading}
-            dark
-          />
-
-          <Pressable onPress={handleUnsafe} style={sheet.unsafeBtn}>
-            <Text style={sheet.unsafeText}>
-              This feels like an emergency → Get help now
-            </Text>
-          </Pressable>
+            <Pressable onPress={handleUnsafe} style={sheet.unsafeBtn}>
+              <Text style={sheet.unsafeText}>This feels like an emergency → Get help now</Text>
+            </Pressable>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-// ── SOS Tab button — pulsing
 function SOSTabButton({ onPress }: { onPress: () => void }) {
   const scale   = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(0.6)).current;
@@ -270,7 +262,6 @@ const sosBtn = StyleSheet.create({
   label: { fontSize: 10, fontWeight: '900', color: 'white', letterSpacing: 0.5 },
 });
 
-// ── Main layout
 export default function TabsLayout() {
   const [sosVisible, setSosVisible] = useState(false);
 
@@ -278,7 +269,9 @@ export default function TabsLayout() {
     <>
       <Tabs
         screenOptions={{
-          headerShown: false,
+          headerShown:             false,
+          tabBarActiveTintColor:   colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor:  colors.borderSoft,
@@ -286,32 +279,34 @@ export default function TabsLayout() {
             height:          64,
             paddingBottom:   10,
           },
-          tabBarActiveTintColor:   colors.primary,
-          tabBarInactiveTintColor: colors.textMuted,
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>⊞</Text>,
+            title:            'Dashboard',
             tabBarLabelStyle: styles.tabLabel,
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>⊞</Text>,
           }}
         />
         <Tabs.Screen
-          name="sos-placeholder"
-          options={{
-            title: '',
-            tabBarIcon: () => <SOSTabButton onPress={() => setSosVisible(true)} />,
-          }}
-          listeners={{ tabPress: (e) => { e.preventDefault(); setSosVisible(true); } }}
-        />
+  name="sos-placeholder"
+  options={{
+    title: '',
+    tabBarButton: () => (
+      <Pressable onPress={() => setSosVisible(true)} style={styles.sosTabBtn}>
+        <SOSTabButton onPress={() => setSosVisible(true)} />
+      </Pressable>
+    ),
+  }}
+/>
+
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Settings',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>⚙</Text>,
+            title:            'Settings',
             tabBarLabelStyle: styles.tabLabel,
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>⚙</Text>,
           }}
         />
         <Tabs.Screen name="profile"  options={{ href: null }} />
@@ -335,21 +330,21 @@ const sheet = StyleSheet.create({
   overlay:  { flex: 1, backgroundColor: 'rgba(17,24,32,0.6)' },
   keyboard: { justifyContent: 'flex-end' },
   root: {
-    backgroundColor: colors.night,
-    borderRadius:    radius.xl,
-    borderBottomLeftRadius:  0,
-    borderBottomRightRadius: 0,
-    padding:    spacing.lg,
-    paddingTop: spacing.sm,
-    gap:        spacing.md,
-    maxHeight:  '90%',
+    backgroundColor:      colors.night,
+    borderTopLeftRadius:  radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal:    spacing.lg,
+    paddingTop:           spacing.sm,
+    paddingBottom:        spacing.md,
+    maxHeight:            '90%',
   },
   handle: {
     width: 36, height: 4, borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center', marginBottom: spacing.xs,
+    alignSelf: 'center', marginBottom: spacing.sm,
   },
-  header:          { gap: spacing.sm },
+  scrollContent: { gap: spacing.md, paddingBottom: spacing.xl },
+  header:        { gap: spacing.sm },
   contextPill: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(124,154,135,0.15)',
@@ -371,30 +366,25 @@ const sheet = StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
     borderRadius: radius.large, overflow: 'hidden',
   },
-  textarea: { padding: spacing.md, fontSize: 16, color: colors.textInverse, lineHeight: 24, minHeight: 100 },
+  textarea:     { padding: spacing.md, fontSize: 16, color: colors.textInverse, lineHeight: 24, minHeight: 100 },
   textareaHint: {
     ...type.caption, color: 'rgba(255,255,255,0.25)',
     fontStyle: 'italic', paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
   },
-  crisisBanner: {
-    borderTopWidth: 1, borderTopColor: 'rgba(200,136,58,0.3)',
-    backgroundColor: 'rgba(200,136,58,0.1)',
-  },
-  crisisBannerInner: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: spacing.sm, padding: spacing.sm, paddingHorizontal: spacing.md,
-  },
-  crisisIcon:  { fontSize: 16 },
-  crisisTitle: { fontSize: 13, fontWeight: '700', color: colors.amber },
-  crisisSub:   { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
-  intensityRow:    { gap: spacing.xs },
-  intensityLabel:  { ...type.label, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.8 },
-  intensityOpt:    { fontSize: 10, fontWeight: '400', color: 'rgba(255,255,255,0.2)', textTransform: 'none' },
-  intensityCircles:{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-end', paddingVertical: spacing.xs },
-  intensityTap:    { alignItems: 'center', justifyContent: 'flex-end', height: 40, flex: 1 },
-  intensityCircle: { borderWidth: 1.5 },
-  error:     { ...type.bodySmall, color: colors.dangerDark },
-  unsafeBtn: { alignSelf: 'center', paddingVertical: spacing.xs, minHeight: 40, justifyContent: 'center' },
-  unsafeText:{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textDecorationLine: 'underline', textAlign: 'center' },
+  crisisBanner:      { borderTopWidth: 1, borderTopColor: 'rgba(200,136,58,0.3)', backgroundColor: 'rgba(200,136,58,0.1)' },
+  crisisBannerInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, paddingHorizontal: spacing.md },
+  crisisIcon:        { fontSize: 16 },
+  crisisTitle:       { fontSize: 13, fontWeight: '700', color: colors.amber },
+  crisisSub:         { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  intensityWrap:     { gap: spacing.xs },
+  intensityLabel:    { ...type.label, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.8 },
+  intensityOpt:      { fontSize: 10, fontWeight: '400', color: 'rgba(255,255,255,0.2)', textTransform: 'none' },
+  intensityCircles:  { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, paddingVertical: spacing.xs },
+  intensityTap:      { alignItems: 'center', justifyContent: 'flex-end', height: 40, flex: 1 },
+  intensityCircle:   { borderWidth: 1.5 },
+  error:             { ...type.bodySmall, color: colors.dangerDark },
+  unsafeBtn:         { alignSelf: 'center', paddingVertical: spacing.xs, minHeight: 40, justifyContent: 'center' },
+  unsafeText:        { fontSize: 12, color: 'rgba(255,255,255,0.3)', textDecorationLine: 'underline', textAlign: 'center' },
 });
+
 
