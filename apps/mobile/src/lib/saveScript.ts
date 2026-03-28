@@ -1,21 +1,17 @@
+// apps/mobile/src/lib/saveScript.ts
+// Updated for expanded schema — regulate/connect/guide are now ScriptStep objects
+// Stored as JSONB in Supabase
+
 import { supabase } from './supabase';
+import type { ScriptStep } from '../types/parentingScript';
 
 type SaveScriptInput = {
   situation_summary: string;
-  regulate: string;
-  connect: string;
-  guide: string;
-  childAge: number | null;
-};
-
-type SavedScriptRow = {
-  id: string;
-  user_id: string;
-  situation_summary: string;
-  regulate: string;
-  connect: string;
-  guide: string;
-  child_age: number | null;
+  regulate:          ScriptStep;
+  connect:           ScriptStep;
+  guide:             ScriptStep;
+  avoid:             string[];
+  childAge:          number | null;
 };
 
 export async function saveScript({
@@ -23,37 +19,31 @@ export async function saveScript({
   regulate,
   connect,
   guide,
+  avoid,
   childAge,
-}: SaveScriptInput): Promise<SavedScriptRow> {
+}: SaveScriptInput): Promise<void> {
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
-  if (userError) {
-    throw userError;
-  }
+  if (userError) throw userError;
+  if (!user) throw new Error('No signed-in user');
 
-  if (!user) {
-    throw new Error('No signed-in user');
-  }
-
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('saved_scripts')
     .insert({
-      user_id: user.id,
+      user_id:           user.id,
       situation_summary,
-      regulate,
-      connect,
-      guide,
-      child_age: childAge,
-    })
-    .select()
-    .single();
+      // Store as JSON strings so they work with existing text columns
+      // or as JSONB if the table supports it
+      regulate:          JSON.stringify(regulate),
+      connect:           JSON.stringify(connect),
+      guide:             JSON.stringify(guide),
+      avoid:             JSON.stringify(avoid),
+      child_age:         childAge,
+    });
 
-  if (error) {
-    throw error;
-  }
-
-  return data as SavedScriptRow;
+  if (error) throw error;
 }
+

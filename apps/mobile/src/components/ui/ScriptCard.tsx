@@ -1,72 +1,71 @@
+
+// apps/mobile/src/components/ui/ScriptCard.tsx
+// Renders one step of the script (Regulate / Connect / Guide)
+// parent_action = what the parent DOES — shown as a small action line
+// script = what the parent SAYS — shown as the main text
+
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, type } from '../../theme';
 
 type Step = 'Regulate' | 'Connect' | 'Guide';
 
-type ScriptCardProps = {
-  step:    Step;
-  action:  string;
-  script:  string;
-  delay?:  number;
+type Props = {
+  step:          Step;
+  parent_action: string;
+  script:        string;
+  delay?:        number;
 };
 
-const STEP_CONFIG = {
+const STEP_COLORS: Record<Step, { bg: string; border: string; badge: string }> = {
   Regulate: {
-    bg:    colors.sageLight,
-    badge: colors.sage,
-    hint:  'What you do first',
+    bg:     'rgba(124,154,135,0.08)',
+    border: 'rgba(124,154,135,0.18)',
+    badge:  colors.sage,
   },
   Connect: {
-    bg:    colors.primaryLight,
-    badge: colors.primary,
-    hint:  'Name the feeling · hold the limit',
+    bg:     'rgba(60,90,115,0.08)',
+    border: 'rgba(60,90,115,0.2)',
+    badge:  colors.primary,
   },
   Guide: {
-    bg:    colors.amberLight,
-    badge: colors.amber,
-    hint:  'Move it forward',
+    bg:     'rgba(200,136,58,0.07)',
+    border: 'rgba(200,136,58,0.18)',
+    badge:  colors.amber,
   },
-} as const;
+};
 
-export function ScriptCard({ step, action, script, delay = 0 }: ScriptCardProps) {
-  const config     = STEP_CONFIG[step];
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(16)).current;
+export function ScriptCard({ step, parent_action, script, delay = 0 }: Props) {
+  const opacity   = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(14)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue:         1,
-        duration:        420,
-        delay,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue:         0,
-        duration:        420,
-        delay,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(opacity,    { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 380, useNativeDriver: true }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(timer);
   }, [delay, opacity, translateY]);
 
+  const c = STEP_COLORS[step];
+
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        { backgroundColor: config.bg, opacity, transform: [{ translateY }] },
-      ]}
-    >
-      <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: config.badge }]}>
-          <Text style={styles.badgeText}>{step.toUpperCase()}</Text>
-        </View>
-        <Text style={styles.hint}>{config.hint}</Text>
+    <Animated.View style={[
+      styles.card,
+      { backgroundColor: c.bg, borderColor: c.border },
+      { opacity, transform: [{ translateY }] },
+    ]}>
+      {/* Badge */}
+      <View style={[styles.badge, { backgroundColor: c.badge }]}>
+        <Text style={styles.badgeText}>{step.toUpperCase()}</Text>
       </View>
 
-      {action ? <Text style={styles.action}>{action}</Text> : null}
+      {/* Parent action */}
+      <Text style={styles.action}>{parent_action}</Text>
 
+      {/* Script — what to say */}
       <Text style={styles.script}>"{script}"</Text>
     </Animated.View>
   );
@@ -75,40 +74,36 @@ export function ScriptCard({ step, action, script, delay = 0 }: ScriptCardProps)
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.large,
+    borderWidth:  1,
     padding:      spacing.lg,
-    gap:          spacing.sm,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
+    gap:          spacing.xs,
   },
   badge: {
+    alignSelf:         'flex-start',
     borderRadius:      radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical:   3,
+    marginBottom:      spacing.xxs,
   },
   badgeText: {
-    fontSize:      10,
+    fontSize:      9,
     fontWeight:    '800',
     color:         colors.textInverse,
     letterSpacing: 0.6,
   },
-  hint: {
-    fontSize:  11,
-    color:     colors.textMuted,
-    fontStyle: 'italic',
-  },
   action: {
-    fontSize:  13,
-    color:     colors.textSecondary,
-    fontStyle: 'italic',
+    fontSize:   13,
+    fontWeight: '600',
+    color:      colors.textMuted,
+    fontStyle:  'italic',
+    lineHeight: 18,
   },
   script: {
-    fontSize:      18,
-    fontWeight:    '600',
-    lineHeight:    28,
-    color:         colors.text,
-    letterSpacing: -0.1,
+    fontSize:   18,
+    fontWeight: '600',
+    color:      colors.text,
+    lineHeight: 28,
   },
 });
+
+

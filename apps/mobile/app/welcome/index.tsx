@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+// app/welcome/index.tsx — New onboarding with live trial
+// Page 1: Hero — what Sturdy does
+// Page 2: Live trial — real AI call, Regulate shown, Connect+Guide locked
+
+import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import AsyncStorage     from '@react-native-async-storage/async-storage';
@@ -13,136 +19,85 @@ import { router }       from 'expo-router';
 import { StatusBar }    from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button }       from '../../src/components/ui/Button';
-import { colors, radius, spacing } from '../../src/theme';
+import { colors, radius, spacing, type } from '../../src/theme';
 
 const { width: W } = Dimensions.get('window');
 
-// ── Animated demo — Regulate/Connect/Guide cards loop in
-function AnimatedDemo() {
-  const cards = [
-    {
-      label:  'REGULATE',
-      script: '"You\'re really upset about leaving the park."',
-      bg:     colors.sageLight,
-      badge:  colors.sage,
-    },
-    {
-      label:  'CONNECT',
-      script: '"You wanted more time. It\'s still time to go."',
-      bg:     colors.primaryLight,
-      badge:  colors.primary,
-    },
-    {
-      label:  'GUIDE',
-      script: '"We\'re leaving now. Walk with me to the car."',
-      bg:     colors.amberLight,
-      badge:  colors.amber,
-    },
-  ];
+// Age tap row — most common ages visible, scroll for more
+const QUICK_AGES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
-  const anims = useRef(
-    cards.map(() => ({
-      opacity:    new Animated.Value(0),
-      translateY: new Animated.Value(14),
-    }))
-  ).current;
+// Lightweight trial API call — no auth needed
+async function getTrialScript(params: {
+  childName: string;
+  childAge:  number;
+  message:   string;
+}): Promise<{ regulate: string; connect: string; guide: string } | null> {
+  const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
 
-  useEffect(() => {
-    const buildCardAnim = (i: number, delay: number) =>
-      Animated.parallel([
-        Animated.timing(anims[i].opacity, {
-          toValue:         1,
-          duration:        380,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(anims[i].translateY, {
-          toValue:         0,
-          duration:        380,
-          delay,
-          useNativeDriver: true,
-        }),
-      ]);
-
-    const buildReset = () =>
-      Animated.parallel(
-        anims.map(a =>
-          Animated.parallel([
-            Animated.timing(a.opacity,    { toValue: 0, duration: 220, useNativeDriver: true }),
-            Animated.timing(a.translateY, { toValue: 14, duration: 0,  useNativeDriver: true }),
-          ])
-        )
-      );
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(400),
-        buildCardAnim(0, 0),
-        buildCardAnim(1, 300),
-        buildCardAnim(2, 300),
-        Animated.delay(2000),
-        buildReset(),
-        Animated.delay(500),
-      ])
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/chat-parenting-assistant`,
+      {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify(params),
+      }
     );
-
-    loop.start();
-    return () => loop.stop();
-  }, [anims]);
-
-  return (
-    <View style={demo.wrap}>
-      <View style={demo.situation}>
-        <Text style={demo.situationText}>Leaving the park · Age 4</Text>
-      </View>
-      {cards.map((c, i) => (
-        <Animated.View
-          key={c.label}
-          style={[
-            demo.card,
-            {
-              backgroundColor: c.bg,
-              opacity:          anims[i].opacity,
-              transform:        [{ translateY: anims[i].translateY }],
-            },
-          ]}
-        >
-          <View style={[demo.badge, { backgroundColor: c.badge }]}>
-            <Text style={demo.badgeText}>{c.label}</Text>
-          </View>
-          <Text style={demo.script}>{c.script}</Text>
-        </Animated.View>
-      ))}
-    </View>
-  );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.response_type === 'crisis') return null;
+    return { regulate: data.regulate, connect: data.connect, guide: data.guide };
+  } catch {
+    return null;
+  }
 }
 
 export default function WelcomeScreen() {
   const scrollRef           = useRef<ScrollView>(null);
   const [page,   setPage]   = useState(0);
-  const [saving, setSaving] = useState(false);
 
-  // Hero fade-in on mount
-  const heroOpacity = useRef(new Animated.Value(0)).current;
-  const heroY       = useRef(new Animated.Value(24)).current;
+  // Trial state
+  const [childName,  setChildName]  = useState('');
+  const [childAge,   setChildAge]   = useState<number | null>(null);
+  const [situation,  setSituation]  = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [result,     setResult]     = useState<{ regulate: string } | null>(null);
+  const [error,      setError]      = useState('');
+  const [saving,     setSaving]     = useState(false);
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(heroOpacity, {
-        toValue: 1, duration: 600, delay: 150, useNativeDriver: true,
-      }),
-      Animated.timing(heroY, {
-        toValue: 0, duration: 600, delay: 150, useNativeDriver: true,
-      }),
-    ]).start();
-  }, [heroOpacity, heroY]);
+  const canTry = childAge !== null && situation.trim().length > 0;
 
   const goTo = (i: number) => {
     scrollRef.current?.scrollTo({ x: i * W, animated: true });
     setPage(i);
   };
 
-  const finish = async () => {
+  const handleTry = async () => {
+    if (!canTry || loading) return;
+    setError(''); setLoading(true); setResult(null);
+
+    const script = await getTrialScript({
+      childName: childName.trim() || 'your child',
+      childAge:  childAge!,
+      message:   situation.trim(),
+    });
+
+    setLoading(false);
+
+    if (!script) {
+      setError("Couldn't get a script right now. Please try again.");
+      return;
+    }
+
+    setResult({ regulate: script.regulate });
+  };
+
+  const handleSignUp = async () => {
     if (saving) return;
     setSaving(true);
     try { await AsyncStorage.setItem('sturdy_welcome_done', 'true'); } catch { }
@@ -150,9 +105,10 @@ export default function WelcomeScreen() {
     router.replace('/auth/sign-up');
   };
 
-  const skip = async () => {
-    try { await AsyncStorage.setItem('sturdy_welcome_done', 'true'); } catch { }
-    router.replace('/child-setup');
+  const resetTrial = () => {
+    setResult(null); setError('');
+    setSituation(''); setChildAge(null); setChildName('');
+    goTo(0);
   };
 
   return (
@@ -167,120 +123,235 @@ export default function WelcomeScreen() {
         style={styles.pager}
       >
 
-        {/* ══════════════════════════════
+        {/* ════════════════
             PAGE 1 — Hero
-        ══════════════════════════════ */}
+        ════════════════ */}
         <View style={[styles.page, { width: W }]}>
 
-          <Pressable
-            onPress={skip}
-            style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
-          >
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
-
-          <Animated.View
-            style={[
-              styles.heroContent,
-              { opacity: heroOpacity, transform: [{ translateY: heroY }] },
-            ]}
-          >
-            {/* Wordmark row */}
+  
+          <View style={styles.heroContent}>
+            {/* Wordmark */}
             <View style={styles.wordmarkRow}>
               <View style={styles.wordmarkDot} />
               <Text style={styles.wordmark}>STURDY</Text>
             </View>
 
-            {/* Headline */}
             <Text style={styles.headline}>
               What should{'\n'}I say{' '}
               <Text style={styles.headlineAccent}>right now?</Text>
             </Text>
 
             <Text style={styles.heroBody}>
-              Calm, age-aware words for the exact parenting moment
-              in front of you — in seconds.
+              Calm, age-aware words for the exact parenting moment in front of you — in seconds.
             </Text>
 
             {/* Trust chips */}
             <View style={styles.chips}>
               {[
-                { label: 'Ages 2–17',   color: colors.primary },
-                { label: 'In seconds',  color: colors.sage    },
-                { label: 'No jargon',   color: colors.amber   },
+                { label: '👶 Ages 2–17',  color: colors.primary },
+                { label: '⚡ In seconds', color: colors.sage    },
+                { label: '✨ No jargon',  color: colors.amber   },
               ].map(({ label, color }) => (
-                <View
-                  key={label}
-                  style={[styles.chip, { backgroundColor: color + '18' }]}
-                >
-                  <View style={[styles.chipDot, { backgroundColor: color }]} />
+                <View key={label} style={[styles.chip, { backgroundColor: color + '18' }]}>
                   <Text style={[styles.chipText, { color }]}>{label}</Text>
                 </View>
               ))}
             </View>
-          </Animated.View>
+          </View>
 
           {/* Pips */}
           <View style={styles.pips}>
             {[0, 1].map(j => (
-              <View
-                key={j}
-                style={[styles.pip, page === j ? styles.pipActive : styles.pipInactive]}
-              />
+              <View key={j} style={[styles.pip, page === j ? styles.pipActive : styles.pipInactive]} />
             ))}
           </View>
 
           <View style={styles.ctas}>
-            <Button label="See how it works" onPress={() => goTo(1)} />
-          </View>
-
-        </View>
-
-        {/* ══════════════════════════════
-            PAGE 2 — Animated demo
-        ══════════════════════════════ */}
-        <View style={[styles.page, { width: W }]}>
-
-          <View style={styles.demoHeader}>
-            <Text style={styles.demoEyebrow}>How it works</Text>
-            <Text style={styles.demoHeadline}>
-              Describe.{'\n'}Get the words.
-            </Text>
-            <Text style={styles.demoBody}>
-              Type what's happening. Sturdy returns a{' '}
-              <Text style={styles.demoBold}>Regulate → Connect → Guide</Text>
-              {' '}script matched to your child's exact age — right away.
-            </Text>
-          </View>
-
-          {/* Live animated cards */}
-          <AnimatedDemo />
-
-          {/* Pips */}
-          <View style={styles.pips}>
-            {[0, 1].map(j => (
-              <View
-                key={j}
-                style={[styles.pip, page === j ? styles.pipActive : styles.pipInactive]}
-              />
-            ))}
-          </View>
-
-          <View style={styles.ctas}>
-            <Button
-              label={saving ? 'Starting…' : 'Start free'}
-              onPress={finish}
-              disabled={saving}
-            />
+            <Button label="Try it right now →" onPress={() => goTo(1)} />
             <Pressable
               onPress={() => router.push('/auth/sign-in')}
               style={({ pressed }) => [styles.signinBtn, pressed && { opacity: 0.65 }]}
             >
-              <Text style={styles.signinText}>
-                Already have an account? Sign in
-              </Text>
+              <Text style={styles.signinText}>Already have an account? Sign in</Text>
             </Pressable>
           </View>
+        </View>
+
+        {/* ════════════════
+            PAGE 2 — Live Trial
+        ════════════════ */}
+        <View style={[styles.page, { width: W }]}>
+
+          {!result ? (
+            // ── TRIAL INPUT
+            <>
+              <View style={styles.trialHeader}>
+                <Pressable onPress={() => goTo(0)} style={styles.backBtn}>
+                  <Text style={styles.backText}>← Back</Text>
+                </Pressable>
+                <Text style={styles.trialTitle}>Try Sturdy now</Text>
+                <Text style={styles.trialSub}>
+                  Get a real script for a real moment — no account needed.
+                </Text>
+              </View>
+
+              {/* Child name — optional */}
+              <View style={styles.trialField}>
+                <Text style={styles.trialLabel}>
+                  Child name <Text style={styles.trialOptional}>(optional)</Text>
+                </Text>
+                <TextInput
+                  placeholder="Olivia"
+                  placeholderTextColor={colors.textMuted}
+                  value={childName}
+                  onChangeText={setChildName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  style={styles.trialInput}
+                />
+              </View>
+
+              {/* Age tap row */}
+              <View style={styles.trialField}>
+                <Text style={styles.trialLabel}>Child age</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.ageTapRow}
+                >
+                  {QUICK_AGES.map(age => (
+                    <Pressable
+                      key={age}
+                      onPress={() => setChildAge(age)}
+                      style={[
+                        styles.ageTap,
+                        childAge === age && styles.ageTapSelected,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.ageTapText,
+                        childAge === age && styles.ageTapTextSelected,
+                      ]}>
+                        {age}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Situation */}
+              <View style={styles.trialField}>
+                <Text style={styles.trialLabel}>What's happening?</Text>
+                <TextInput
+                  multiline
+                  numberOfLines={4}
+                  placeholder={`My ${childAge ? childAge + '-year-old' : 'child'} is screaming because we have to leave the park.`}
+                  placeholderTextColor={colors.textMuted}
+                  value={situation}
+                  onChangeText={setSituation}
+                  style={styles.trialTextarea}
+                  textAlignVertical="top"
+                />
+                <Text style={styles.trialHint}>
+                  The more detail you share — personality, triggers, what usually helps — the more specific the script will be.
+                </Text>
+              </View>
+
+              {error ? <Text style={styles.trialError}>{error}</Text> : null}
+
+              <View style={styles.ctas}>
+                <Button
+                  label={loading ? 'Getting your script…' : 'Get my script →'}
+                  onPress={handleTry}
+                  disabled={!canTry || loading}
+                  loading={loading}
+                  variant="amber"
+                />
+              </View>
+            </>
+          ) : (
+            // ── TRIAL RESULT
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.resultContent}
+            >
+              <Text style={styles.resultTitle}>Your script</Text>
+              <Text style={styles.resultSub}>
+                Here's one calm way to handle this moment.
+              </Text>
+
+              {/* Regulate — UNLOCKED */}
+              <View style={styles.resultCard}>
+                <View style={[styles.resultBadge, { backgroundColor: colors.sage }]}>
+                  <Text style={styles.resultBadgeText}>REGULATE</Text>
+                </View>
+                <Text style={styles.resultScript}>"{result.regulate}"</Text>
+              </View>
+
+              {/* Connect — LOCKED */}
+              <View style={[styles.resultCard, styles.lockedCard]}>
+                <View style={styles.lockedRow}>
+                  <View style={[styles.resultBadge, { backgroundColor: colors.primary, opacity: 0.4 }]}>
+                    <Text style={styles.resultBadgeText}>CONNECT</Text>
+                  </View>
+                  <View style={styles.lockBadge}>
+                    <Text style={styles.lockBadgeText}>🔒 Sign up to see</Text>
+                  </View>
+                </View>
+                <View style={styles.lockedLines}>
+                  <View style={styles.lockedLine} />
+                  <View style={[styles.lockedLine, { width: '70%' }]} />
+                </View>
+              </View>
+
+              {/* Guide — LOCKED */}
+              <View style={[styles.resultCard, styles.lockedCard]}>
+                <View style={styles.lockedRow}>
+                  <View style={[styles.resultBadge, { backgroundColor: colors.amber, opacity: 0.4 }]}>
+                    <Text style={styles.resultBadgeText}>GUIDE</Text>
+                  </View>
+                  <View style={styles.lockBadge}>
+                    <Text style={styles.lockBadgeText}>🔒 Sign up to see</Text>
+                  </View>
+                </View>
+                <View style={styles.lockedLines}>
+                  <View style={styles.lockedLine} />
+                  <View style={[styles.lockedLine, { width: '55%' }]} />
+                </View>
+              </View>
+
+              {/* CTA */}
+              <View style={styles.resultCta}>
+                <Text style={styles.resultCtaTitle}>
+                  Your full script is ready.
+                </Text>
+                <Text style={styles.resultCtaBody}>
+                  Create a free account to see Connect and Guide — and get unlimited scripts matched to your child.
+                </Text>
+                <Button
+                  label={saving ? 'Starting…' : 'See full script — it\'s free'}
+                  onPress={handleSignUp}
+                  disabled={saving}
+                  loading={saving}
+                />
+                <Pressable
+                  onPress={resetTrial}
+                  style={({ pressed }) => [styles.loopBtn, pressed && { opacity: 0.65 }]}
+                >
+                  <Text style={styles.loopBtnText}>← Try a different situation</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          )}
+
+          {/* Pips — only on input state */}
+          {!result ? (
+            <View style={styles.pips}>
+              {[0, 1].map(j => (
+                <View key={j} style={[styles.pip, page === j ? styles.pipActive : styles.pipInactive]} />
+              ))}
+            </View>
+          ) : null}
 
         </View>
 
@@ -289,54 +360,6 @@ export default function WelcomeScreen() {
   );
 }
 
-// ── Demo card styles
-const demo = StyleSheet.create({
-  wrap: {
-    flex:            1,
-    gap:             spacing.sm,
-    justifyContent:  'center',
-    paddingVertical: spacing.sm,
-  },
-  situation: {
-    alignSelf:         'flex-start',
-    backgroundColor:   colors.chipBg,
-    borderRadius:      radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   4,
-    marginBottom:      spacing.xs,
-  },
-  situationText: {
-    fontSize:      11,
-    fontWeight:    '700',
-    color:         colors.textMuted,
-    letterSpacing: 0.3,
-  },
-  card: {
-    borderRadius: radius.large,
-    padding:      spacing.md,
-    gap:          spacing.xs,
-  },
-  badge: {
-    alignSelf:         'flex-start',
-    borderRadius:      radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   3,
-  },
-  badgeText: {
-    fontSize:      9,
-    fontWeight:    '800',
-    color:         colors.textInverse,
-    letterSpacing: 0.6,
-  },
-  script: {
-    fontSize:   15,
-    fontWeight: '600',
-    color:      colors.text,
-    lineHeight: 22,
-  },
-});
-
-// ── Screen styles
 const styles = StyleSheet.create({
   root:  { flex: 1, backgroundColor: colors.background },
   pager: { flex: 1 },
@@ -349,122 +372,118 @@ const styles = StyleSheet.create({
   },
 
   skipBtn: {
-    alignSelf:         'flex-end',
-    paddingVertical:   spacing.xs,
-    paddingHorizontal: spacing.xs,
-    minHeight:         40,
-    justifyContent:    'center',
+    alignSelf: 'flex-end', paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs, minHeight: 40, justifyContent: 'center',
   },
   skipText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
 
   // Hero
-  heroContent: {
-    flex:           1,
-    justifyContent: 'center',
-    gap:            spacing.lg,
-  },
-
-  wordmarkRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  wordmarkDot: {
-    width:           8,
-    height:          8,
-    borderRadius:    radius.pill,
-    backgroundColor: colors.amber,
-  },
-  wordmark: {
-    fontSize:      11,
-    fontWeight:    '800',
-    letterSpacing: 0.18,
-    color:         colors.textMuted,
-  },
-
+  heroContent: { flex: 1, justifyContent: 'center', gap: spacing.lg },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  wordmarkDot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.amber },
+  wordmark:    { fontSize: 11, fontWeight: '800', letterSpacing: 0.18, color: colors.textMuted },
   headline: {
-    fontSize:      40,
-    fontWeight:    '800',
-    lineHeight:    46,
-    color:         colors.text,
-    letterSpacing: -0.5,
+    fontSize: 38, fontWeight: '800', lineHeight: 44,
+    color: colors.text, letterSpacing: -0.5,
   },
-  headlineAccent: {
-    color: colors.primary,
-  },
-
-  heroBody: {
-    fontSize:   17,
-    color:      colors.textSecondary,
-    lineHeight: 26,
-    maxWidth:   300,
-  },
-
-  chips: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-    flexWrap:      'wrap',
-  },
+  headlineAccent: { color: colors.primary },
+  heroBody:       { fontSize: 17, color: colors.textSecondary, lineHeight: 26, maxWidth: 300 },
+  chips:          { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   chip: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               5,
-    borderRadius:      radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   6,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 6,
   },
-  chipDot:  { width: 5, height: 5, borderRadius: radius.pill },
   chipText: { fontSize: 12, fontWeight: '700' },
 
-  // Demo page
-  demoHeader: {
-    gap:          spacing.xs,
-    marginBottom: spacing.sm,
+  // Trial input
+  trialHeader:   { gap: spacing.xs, paddingTop: spacing.xs },
+  backBtn:       { alignSelf: 'flex-start', paddingVertical: spacing.xs },
+  backText:      { ...type.body, fontWeight: '600', color: colors.textSecondary },
+  trialTitle:    { fontSize: 26, fontWeight: '800', color: colors.text, lineHeight: 32, letterSpacing: -0.3 },
+  trialSub:      { ...type.body, color: colors.textSecondary },
+
+  trialField:    { gap: spacing.xs },
+  trialLabel:    { ...type.label, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  trialOptional: { fontSize: 10, fontWeight: '400', color: colors.textMuted, textTransform: 'none' },
+  trialInput: {
+    fontSize: 18, fontWeight: '400', color: colors.text,
+    borderBottomWidth: 2, borderBottomColor: colors.border,
+    paddingVertical: spacing.xs,
   },
-  demoEyebrow: {
-    fontSize:      11,
-    fontWeight:    '700',
-    letterSpacing: 0.12,
-    textTransform: 'uppercase',
-    color:         colors.textMuted,
+  ageTapRow: { flexDirection: 'row', gap: spacing.xs, paddingVertical: spacing.xs },
+  ageTap: {
+    width: 40, height: 40, borderRadius: radius.medium,
+    backgroundColor: colors.backgroundSoft,
+    borderWidth: 1.5, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  demoHeadline: {
-    fontSize:      32,
-    fontWeight:    '800',
-    lineHeight:    38,
-    color:         colors.text,
-    letterSpacing: -0.4,
+  ageTapSelected:     { backgroundColor: colors.primary, borderColor: colors.primary },
+  ageTapText:         { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  ageTapTextSelected: { color: colors.textInverse, fontWeight: '800' },
+  trialTextarea: {
+    backgroundColor: colors.backgroundSoft,
+    borderWidth: 1.5, borderColor: colors.border,
+    borderRadius: radius.large,
+    padding: spacing.md, fontSize: 15,
+    color: colors.text, lineHeight: 22, minHeight: 100,
   },
-  demoBody: {
-    fontSize:   15,
-    color:      colors.textSecondary,
-    lineHeight: 23,
+  trialHint:  { ...type.caption, color: colors.textMuted, fontStyle: 'italic' },
+  trialError: { ...type.bodySmall, color: colors.dangerDark },
+
+  // Trial result
+  resultContent: { gap: spacing.md, paddingBottom: spacing.xl },
+  resultTitle:   { fontSize: 24, fontWeight: '800', color: colors.text },
+  resultSub:     { ...type.body, color: colors.textSecondary },
+
+  resultCard: {
+    backgroundColor: colors.surface, borderRadius: radius.large,
+    padding: spacing.md, gap: spacing.sm,
+    borderWidth: 1, borderColor: colors.borderSoft,
   },
-  demoBold: { fontWeight: '700', color: colors.text },
+  resultBadge: {
+    alignSelf: 'flex-start', borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm, paddingVertical: 3,
+  },
+  resultBadgeText: { fontSize: 9, fontWeight: '800', color: colors.textInverse, letterSpacing: 0.6 },
+  resultScript:    { fontSize: 17, fontWeight: '600', color: colors.text, lineHeight: 26 },
+
+  // Locked cards
+  lockedCard: { opacity: 0.7 },
+  lockedRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  lockBadge: {
+    backgroundColor: colors.backgroundSoft, borderRadius: radius.pill,
+    paddingHorizontal: spacing.xs, paddingVertical: 3,
+    borderWidth: 1, borderColor: colors.borderSoft,
+  },
+  lockBadgeText: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
+  lockedLines:   { gap: spacing.xs },
+  lockedLine: {
+    height: 10, borderRadius: radius.pill,
+    backgroundColor: colors.borderSoft, width: '85%',
+  },
+
+  // Result CTA
+  resultCta: {
+    backgroundColor: colors.primaryLight, borderRadius: radius.large,
+    padding: spacing.lg, gap: spacing.md,
+    borderWidth: 1, borderColor: 'rgba(60,90,115,0.2)',
+  },
+  resultCtaTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  resultCtaBody:  { ...type.bodySmall, color: colors.textSecondary, lineHeight: 20 },
+  loopBtn:        { alignSelf: 'center', paddingVertical: spacing.xs },
+  loopBtnText:    { ...type.bodySmall, color: colors.textMuted, fontWeight: '600', textDecorationLine: 'underline' },
 
   // Shared
   pips: {
-    flexDirection:   'row',
-    gap:             spacing.xs,
-    justifyContent:  'center',
-    paddingVertical: spacing.md,
+    flexDirection: 'row', gap: spacing.xs,
+    justifyContent: 'center', paddingVertical: spacing.md,
   },
   pip:         { height: 5, borderRadius: radius.pill },
   pipActive:   { width: 22, backgroundColor: colors.primary },
   pipInactive: { width: 5,  backgroundColor: colors.border },
 
-  ctas: { gap: spacing.sm },
-
-  signinBtn: {
-    alignSelf:       'center',
-    paddingVertical: spacing.xs,
-    minHeight:       44,
-    justifyContent:  'center',
-  },
-  signinText: {
-    fontSize:           14,
-    fontWeight:         '600',
-    color:              colors.textSecondary,
-    textDecorationLine: 'underline',
-  },
+  ctas:      { gap: spacing.sm },
+  signinBtn: { alignSelf: 'center', paddingVertical: spacing.xs, minHeight: 44, justifyContent: 'center' },
+  signinText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, textDecorationLine: 'underline' },
 });
+

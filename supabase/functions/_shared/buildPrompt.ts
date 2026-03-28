@@ -1,198 +1,269 @@
 // supabase/functions/_shared/buildPrompt.ts
-// Phase B — Neurotype blocks prepended first.
-// Intensity block injected when intensity >= 4.
-// High intensity = shorter, more direct, no preamble.
+// The science lives here — in the instructions.
+// The output sounds like a calm real parent — nothing else.
+//
+// Science sources baked into this prompt:
+// - Parent self-regulation before child co-regulation
+// - Emotion labeling reduces amygdala activity (name it to tame it)
+// - Rational brain offline during meltdown — no logic mid-crisis
+// - Age-specific discipline research: toddler→redirection, school→problem-solve, teen→coach
+// - 4:1 positive ratio awareness for teens
+// - Natural consequences over punishments
+// - Connect before correct — always
 
 type BuildPromptInput = {
   childName:  string;
   childAge:   number;
   message:    string;
-  neurotype?: string | null;
-  intensity?: number | null;  // 1–5
+  intensity?: number | null;
 };
 
 // ─────────────────────────────────────────────
-// Neurotype blocks
+// Age-specific science rules
+// Hidden from output — shapes how scripts are written
 // ─────────────────────────────────────────────
 
-const NEUROTYPE_BLOCKS: Record<string, string> = {
+function getAgeInstructions(age: number): string {
 
-  ADHD: `
-[NEUROTYPE CONTEXT — read this first, it overrides all other rules]
-This child has ADHD. These rules override the standard writing rules below:
-- Every sentence must be under 10 words. Short. Direct. One idea only.
-- Regulate: Lead with body language before words. Example: "Move closer. Get low."
-- Connect: Name one feeling only. No explanations. No "because".
-- Guide: Always include a movement or physical option. Example: "Jump twice. Then walk with me."
-- Never use "because", "since", or multi-clause sentences.
-- Never lecture. Never reason. Just name and move.
-- Urgency and energy are normal for this child — do not pathologize them.
-[END NEUROTYPE CONTEXT]
-`.trim(),
+  // Infants / early toddlers
+  if (age <= 2) return `
+Child is ${age}. Brain is almost entirely emotional — no reasoning capacity yet.
+Regulation science: Distraction and redirection ONLY. No explanations. No "because".
+Parent action: Physical closeness. Soft voice. Swap forbidden item for safe one.
+Script style: 3-4 words max. Concrete nouns. "Come here." "Gentle hands." "Look at this."
+Emotion labeling: One word. "Sad." "Mad." "Ouch." That's it.
+Guide: One physical redirection. Never a choice — too complex at this age.
+CRITICAL: Never ask questions. Never reason. Just name and redirect.`.trim();
 
-  Autism: `
-[NEUROTYPE CONTEXT — read this first, it overrides all other rules]
-This child has Autism. These rules override the standard writing rules below:
-- Use literal, concrete language. No metaphors. No idioms. No abstract concepts.
-- Regulate: Acknowledge the situation plainly. Example: "It is time to leave now."
-- Connect: State what happens next — not how to feel about it. Sequence is calming.
-- Guide: Give an explicit step-by-step sequence. Example: "First shoes. Then car. Then home."
-- Never say "I know this is hard" or imply the child should understand your feelings.
-- Predictability and precision reduce distress — be exact, not approximate.
-- Tone must be steady and flat. No exaggerated warmth or big emotional language.
-[END NEUROTYPE CONTEXT]
-`.trim(),
+  // Toddlers
+  if (age <= 3) return `
+Child is ${age}. Meltdowns are normal — prefrontal cortex barely online.
+Regulation science: Redirection + simple binary choice gives them sense of control.
+Parent action: Get low. Eye level. Soft voice. No big movements.
+Script style: Short sentences. 4-6 words max. Simple emotional naming.
+Connect: Name the feeling once. "You're really mad." Then the limit. No lecture.
+Guide: Binary choice only. "Blue socks or red socks?" Both options must be fine.
+CRITICAL: No explanations during meltdown. "No hitting" — not "Hitting hurts others because..."`.trim();
 
-  Anxiety: `
-[NEUROTYPE CONTEXT — read this first, it overrides all other rules]
-This child has Anxiety. These rules override the standard writing rules below:
-- Regulate: Lead with reassurance and physical safety. "I'm here. You're safe."
-- Connect: Validate the worry directly. Never dismiss it. Never say "there's nothing to worry about."
-- Guide: Give one predictable next step only. Never leave the sequence open-ended.
-- Include the parent's presence as a constant. "I'll be with you. I won't leave."
-- Avoid urgency or time pressure language — it escalates anxiety.
-- Calm, slow, warm — match the tone to what a regulated nervous system sounds like.
-[END NEUROTYPE CONTEXT]
-`.trim(),
+  // Preschool
+  if (age <= 5) return `
+Child is ${age}. Beginning to understand simple cause and effect.
+Regulation science: Empathy + natural consequence. Brief time-in (stay with parent) over time-out.
+Parent action: Get low. Name the emotion first. Then the limit. Short sentences.
+Script style: Simple, warm, spoken language. Can handle 1-2 sentences. Still concrete.
+Connect: Name the feeling AND the boundary in one breath. No long explanation.
+Guide: Natural consequence stated simply, OR one clear next step with a real choice.
+CRITICAL: Keep it short. A 4-year-old cannot process a paragraph mid-meltdown.
+Example guide: "You can walk with me or I can carry you. You choose."`.trim();
 
-  Sensory: `
-[NEUROTYPE CONTEXT — read this first, it overrides all other rules]
-This child has Sensory Processing differences. These rules override the standard writing rules below:
-- Regulate: Acknowledge the sensory experience first. "I know this feels like too much right now."
-- Connect: Do not push connection — offer presence without demand. "I'm right here."
-- Guide: Reduce demands to the absolute minimum. One step only. Offer an exit option.
-- Never touch without consent. Never add more stimulation — keep your voice low and slow.
-- The environment may be the problem, not the behaviour — acknowledge that first.
-- Avoid saying "calm down" — it does not help and may escalate.
-[END NEUROTYPE CONTEXT]
-`.trim(),
+  // Early school age
+  if (age <= 8) return `
+Child is ${age}. Rational brain developing — can process brief reasons when calm.
+Regulation science: Brief explanation of WHY is okay now. Natural consequences land.
+Parent action: Stay calm. Acknowledge the feeling first. Then the boundary. Then next step.
+Script style: Conversational, direct, warm. Can be 2-3 sentences. Still not a lecture.
+Connect: Name the feeling + explain the limit briefly. "You're frustrated AND hitting isn't okay."
+Guide: Clear next step. Can offer a choice. Brief mention of what happens next.
+CRITICAL: No lecturing mid-meltdown. Save problem-solving for when they're calm.`.trim();
 
-  PDA: `
-[NEUROTYPE CONTEXT — read this first, it overrides all other rules]
-This child has PDA (Pathological Demand Avoidance). These rules override the standard writing rules below:
-- Regulate: Remove the demand entirely from this step. No instructions. Pure presence.
-- Connect: Use collaborative, non-directive language. "I wonder if..." or "Maybe we could..."
-- Guide: Offer genuine choices — not fake choices. Both options must be real.
-- Never issue direct commands. Demands trigger avoidance — even well-intentioned ones.
-- Depersonalise the requirement. "The rule is we leave at 5" not "You need to leave."
-- Autonomy and control are the child's core need — build every sentence around offering some.
-[END NEUROTYPE CONTEXT]
-`.trim(),
+  // Late school age
+  if (age <= 12) return `
+Child is ${age}. Capable of reasoning. Values fairness intensely. Needs respect.
+Regulation science: Involve them in solutions. Loss of privilege works. Problem-solve together later.
+Parent action: Calm, steady tone. Don't match their escalation. Acknowledge before correcting.
+Script style: Respectful, adult-adjacent language. Clear expectations. Not babyish.
+Connect: Empathize with their perspective even if you disagree with their behavior.
+Guide: Clear consequence or next step. Can use "when-then" structure.
+Example guide: "When you've calmed down, we'll talk about what happened."
+CRITICAL: No sarcasm. No shame. No "you always" or "you never".`.trim();
 
-  '2e': `
-[NEUROTYPE CONTEXT — read this first, it overrides all other rules]
-This child is Twice Exceptional (2e) — high intellectual ability alongside learning or developmental differences.
-These rules override the standard writing rules below:
-- Never talk down. Match their intellectual level in language — they will notice if you don't.
-- Regulate: Acknowledge the gap between what they understand and what they feel. Both are real.
-- Connect: Logical framing with emotional acknowledgment together. Not either/or.
-- Guide: Give the reasoning AND the next step. They need to understand why to cooperate.
-- Never simplify language — simplify the demand, not the words.
-- Asynchronous development is real — a child who reasons like an adult may feel like a toddler. Hold both.
-[END NEUROTYPE CONTEXT]
-`.trim(),
-
-};
-
-// ─────────────────────────────────────────────
-// Intensity block
-// Only injected at intensity 4 or 5.
-// At high intensity the parent needs fewer
-// words, faster — no preamble, no nuance.
-// ─────────────────────────────────────────────
-
-function getIntensityBlock(intensity: number): string | null {
-  if (intensity <= 3) return null;
-
-  if (intensity === 4) {
-    return `
-[INTENSITY CONTEXT — this moment is intense]
-The parent has indicated this is a high-intensity moment (4 out of 5).
-Adjust output as follows:
-- Make every script line shorter than usual. No clauses. No softeners.
-- Regulate and Connect must be immediately usable — no build-up.
-- Guide must be one direct action only.
-- Do not open with a long situation summary — keep it to one short sentence.
-[END INTENSITY CONTEXT]
-`.trim();
-  }
-
-  // intensity === 5
+  // Teens
   return `
-[INTENSITY CONTEXT — this is a crisis-level moment]
-The parent has indicated this is a maximum-intensity moment (5 out of 5).
-This parent may be dysregulated themselves. Adjust output as follows:
-- Every script line must be 6 words or fewer. Absolute maximum 8.
-- Regulate: One sentence. Body action only. Example: "Breathe. Move closer."
-- Connect: One sentence. Feeling name only. No explanation.
-- Guide: One sentence. One action. Example: "We leave now. I'm with you."
-- situation_summary must be one short sentence only.
-- Do not explain. Do not reason. Just give the words.
-[END INTENSITY CONTEXT]
-`.trim();
+Child is ${age}. Science shifts: discipline is now COACHING not controlling.
+Goal is internal regulation and critical thinking — not just compliance.
+Regulation science:
+  - Collaborative limit setting — teens respect rules they helped create
+  - Natural consequences over punishments (punishments cause resentment)
+  - "When-then" formula: "When X is done, then Y happens"
+  - Connection is the most powerful influence tool at this age
+  - 4:1 ratio: four positive interactions for every correction
+Parent action: Lower your voice. Don't pursue if they walk away — reconnect later.
+Script style: Near-adult language. Respectful. Brief. No lecturing.
+Connect: Empathize with their feeling even when you hold the limit firmly.
+Guide: "When-then" where possible. Natural consequence. Or one clear expectation.
+Example: "I hear you're frustrated. When you're ready to talk calmly, I'm here."
+CRITICAL: Never threaten. Never compare to siblings. Never use guilt.
+Non-negotiables only: safety, health, values. Let small things go.`.trim();
 }
 
 // ─────────────────────────────────────────────
-// Main prompt builder
+// Intensity rules
+// High intensity = fewer words, more physical
+// Low intensity = warmer, can be slightly fuller
+// ─────────────────────────────────────────────
+
+function getIntensityInstructions(intensity: number): string {
+  if (intensity === 1) return `
+Intensity is mild (1/5). Child is frustrated but manageable.
+Scripts can be warm and slightly fuller. Parent has space and time.
+Connect can include feeling AND a brief boundary in one sentence.
+Guide can offer a genuine choice.`.trim();
+
+  if (intensity === 2) return `
+Intensity is building (2/5). Tension is rising.
+Keep each script to 1-2 sentences maximum. No softeners.
+Connect: feeling + limit in one sentence.
+Guide: one clear option only.`.trim();
+
+  if (intensity === 3) return `
+Intensity is hard (3/5). Child is escalated. Parent needs immediate words.
+One sentence per step. No preamble. No explanation.
+Regulate: physical action first, then one short sentence.
+Connect: feeling name + limit. Maximum 8 words.
+Guide: one action. That's it.`.trim();
+
+  if (intensity === 4) return `
+Intensity is very hard (4/5). Parent may be dysregulated too.
+Maximum 6 words per script line. Hard limit.
+parent_action becomes more important than the script at this level.
+Regulate script: 3-4 words only.
+Connect script: 4-5 words only.
+Guide script: 4 words only.
+situation_summary: one short sentence.`.trim();
+
+  return `
+Intensity is overwhelming (5/5). Parent is in maximum crisis.
+Scripts must be 3-4 words absolute maximum. Hard limit.
+parent_action is the priority — the script is just a few words.
+Regulate: "Breathe. Move closer."
+Connect: "I see you."
+Guide: "Come with me."
+situation_summary: 5 words maximum. Nothing else.`.trim();
+}
+
+// ─────────────────────────────────────────────
+// Main builder
 // ─────────────────────────────────────────────
 
 export function buildPrompt({
   childName,
   childAge,
   message,
-  neurotype,
   intensity,
 }: BuildPromptInput): string {
 
-  const neurotypePart = neurotype && NEUROTYPE_BLOCKS[neurotype]
-    ? [NEUROTYPE_BLOCKS[neurotype], '']
-    : [];
-
-  const intensityBlock = intensity ? getIntensityBlock(intensity) : null;
-  const intensityPart  = intensityBlock ? [intensityBlock, ''] : [];
+  const ageInstructions       = getAgeInstructions(childAge);
+  const intensityInstructions = intensity ? getIntensityGuidance(intensity) : '';
 
   return [
-    ...neurotypePart,
-    ...intensityPart,
-    'Sturdy writes calm, practical parenting scripts for real-life moments.',
+    '== YOUR JOB ==',
+    'You are writing three short things a parent can say OUT LOUD in a hard moment with their child.',
+    'These are not lessons. Not coaching scripts. Not therapy language.',
+    'They are the actual words a calm, loving parent says in real life.',
     '',
-    'The goal is to help a parent know what to say next in a hard moment with their child.',
+    '== THE MOMENT ==',
+    `Child: ${childName}, age ${childAge}`,
+    `What is happening: ${message.trim()}`,
+    intensity ? `How intense: ${intensity} out of 5` : '',
     '',
-    'Context:',
-    `- Child name: ${childName}`,
-    `- Child age: ${childAge}`,
-    `- Situation: ${message.trim()}`,
-    intensity ? `- Intensity level: ${intensity} out of 5` : '',
+    '== AGE SCIENCE — shapes how you write, never appears in output ==',
+    ageInstructions,
     '',
-    'Output must be strict JSON with:',
-    '- situation_summary',
-    '- regulate',
-    '- connect',
-    '- guide',
+    intensity ? `== INTENSITY — shapes length and directness ==` : '',
+    intensity ? intensityInstructions : '',
+    intensity ? '' : '',
+    '== THE THREE OUTPUTS ==',
     '',
-    'Writing rules:',
-    '- Sound calm, clear, and human.',
-    '- Never sound clinical or diagnostic.',
-    '- Adapt language to the child\'s exact age.',
-    '- Make it specific to the situation.',
-    '- Prioritize real words a parent can say out loud.',
-    '- Keep it concise and practical.',
-    '- Do not mention disorders, labels, or neurotypes in your output.',
-    '- Do not reference the neurotype or intensity context blocks in your output.',
+    'REGULATE',
+    'Purpose: Help the parent settle themselves and the moment — before anything else.',
+    'Science: A dysregulated parent cannot regulate a child. Parent breathes first.',
+    'parent_action: What the parent does with their body before speaking.',
+    '  Examples: "Take one breath. Get low." / "Move closer. Slow down." / "Breathe. Soft voice."',
+    'script: What the parent says first. Names the situation or the feeling — nothing more.',
+    '  The script is NOT a command. It is acknowledgment.',
+    '  Good: "You\'re really upset about leaving."',
+    '  Good: "That felt really unfair."',
+    '  Bad: "I know you\'re having big feelings right now." — too clinical',
+    '  Bad: "Take a deep breath with me." — makes parent sound like a yoga teacher',
     '',
-    'Reasoning:',
-    '- Identify the child\'s likely emotion.',
-    '- Help the parent regulate first.',
-    '- Validate the child\'s feeling.',
-    '- Guide toward action.',
+    'CONNECT',
+    'Purpose: Show the child they are understood. Then — and only then — hold the limit.',
+    'Science: Name the emotion to reduce amygdala activity. Connect before you correct.',
+    'RULE: Connect must ALWAYS have both — the feeling AND the boundary.',
+    'RULE: No logic mid-meltdown for ages under 10. No "because" explanations during high intensity.',
+    'parent_action: What the parent does during this step.',
+    '  Examples: "Stay close. Hold the limit." / "Keep voice calm. Don\'t negotiate."',
+    'script: Name the feeling + hold the limit in natural spoken language.',
+    '  Good: "You wanted to stay longer, and it\'s really hard to leave. We\'re still going."',
+    '  Good: "I know you\'re angry. Hitting isn\'t something I\'ll let happen."',
+    '  Bad: "I understand your frustration and validate your feelings." — therapy speak',
+    '  Bad: "I\'m here. I won\'t let you hit." — no feeling named, robotic',
+    '  Bad: "It\'s okay to feel mad but it\'s not okay to..." — lecture tone',
     '',
-    'Return JSON ONLY in this exact shape:',
+    'GUIDE',
+    'Purpose: Move the situation forward. One clear next step.',
+    'Science: Natural consequence > punishment. Choice gives sense of control. "When-then" for older kids.',
+    'parent_action: What the parent does to move things forward.',
+    '  Examples: "Start walking. One clear option." / "Wait. Give them a moment." / "Offer the choice calmly."',
+    'script: What happens next — stated simply.',
+    '  Good: "We\'re leaving now. You can walk or I\'ll help you."',
+    '  Good: "When you\'re ready, come find me."',
+    '  Good: "Put the tablet down. We\'ll try again tomorrow."',
+    '  Bad: "Promise me this won\'t happen again." — fake promise',
+    '  Bad: "Let\'s think about how we can make better choices." — coaching language',
+    '  Bad: "Do you understand why that wasn\'t okay?" — mid-meltdown question',
+    '',
+    'AVOID',
+    'List 2-3 phrases the parent should NOT say in this specific moment.',
+    'These are real things parents say that make this type of situation worse.',
+    'Be specific to the situation — not generic.',
+    '  Examples: "Stop it right now" / "You\'re embarrassing me" / "Why can\'t you just listen?"',
+    '  For teens add: "Because I said so" / "When I was your age..." / "You\'re being so dramatic"',
+    '  Keep each one short — 2-6 words. These are phrases, not sentences.',
+    '',
+    '== NON-NEGOTIABLE WRITING RULES ==',
+    '1. Every word must sound like a real calm parent — not a book, not a therapist, not a teacher.',
+    '2. BANNED WORDS: "validate", "co-regulate", "big feelings", "inside voice", "processing",',
+    '   "behavior", "appropriate", "boundary" (say "limit" instead), "mindful", "intentional".',
+    '3. BANNED PHRASES: "Let\'s use our words." "I understand how you feel." "That\'s not okay behavior."',
+    '   "Can you tell me why you did that?" "How does that make you feel?"',
+    '4. NEVER start Guide with "Let\'s" unless it is a direct physical invitation like "Let\'s walk."',
+    '5. NEVER invent details not in the parent\'s message.',
+    '6. NEVER repeat the same phrase between Regulate and Connect scripts.',
+    '7. Scripts must be easy to say out loud while stressed — no stumbling.',
+    '8. situation_summary describes what is happening — factual, not prescriptive.',
+    '9. Do not mention age groups, brain science, or parenting strategies in output.',
+    '',
+    '== QUALITY CHECK BEFORE RETURNING ==',
+    `Does regulate sound like something a real parent says — not a script?`,
+    `Does connect name a specific emotion AND hold a specific limit?`,
+    `Does guide give ONE real next step — not a lesson?`,
+    `Is every word appropriate for a ${childAge}-year-old?`,
+    `Would a stressed parent actually say this out loud?`,
+    `Is there any therapy/coaching language hiding in here? Remove it.`,
+    '',
+    '== OUTPUT — JSON ONLY ==',
+    'No markdown. No explanation. No preamble.',
     '{',
-    '  "situation_summary": "...",',
-    '  "regulate": "...",',
-    '  "connect": "...",',
-    '  "guide": "..."',
+    '  "situation_summary": "one sentence describing what is happening",',
+    '  "regulate": {',
+    '    "parent_action": "what the parent does first",',
+    '    "script": "what the parent says"',
+    '  },',
+    '  "connect": {',
+    '    "parent_action": "what the parent does during connect",',
+    '    "script": "what the parent says — feeling + limit"',
+    '  },',
+    '  "guide": {',
+    '    "parent_action": "what the parent does to move forward",',
+    '    "script": "what the parent says — one next step"',
+    '  },',
+    '  "avoid": ["phrase one", "phrase two", "phrase three"]',
     '}',
-    'Do not include markdown or extra text.',
-  ].filter(line => line !== null).join('\n');
+  ].filter(Boolean).join('\n');
 }
+
+function getIntensityGuidance(intensity: number): string {
+  return getIntensityInstructions(intensity);
+}
+
